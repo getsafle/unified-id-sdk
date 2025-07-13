@@ -1,14 +1,9 @@
 {
   "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "targets": {
-          "node": "18"
-        },
-        "modules": "commonjs"
+    ["@babel/preset-env", {
+      "targets": {
+        "node": "16"
       }
-    ]
-  ],
-  "plugins": []
+    }]
+  ]
 } 

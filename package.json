@@ -1,74 +1,85 @@
 {
-  "name": "@unifiedid/sdk",
+  "name": "@unified-id/relayer-sdk",
   "version": "1.0.0",
-  "description": "Functional programming SDK for UnifiedID system - Multi-chain identity resolution and management",
-  "main": "lib/index.js",
+  "description": "Official Unified ID Relayer SDK for blockchain identity management and cross-chain operations",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
   "scripts": {
-    "build": "babel src -d lib",
-    "dev": "babel src -d lib --watch",
+    "build": "rollup -c",
+    "dev": "rollup -c --watch",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.js",
-    "format": "prettier --write src/**/*.js",
-    "docs": "jsdoc -c jsdoc.json",
-    "clean": "rm -rf lib",
-    "prepublishOnly": "npm run clean && npm run build"
+    "lint:fix": "eslint src/**/*.js --fix",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test",
+    "docs": "jsdoc src -d docs",
+    "example:basic": "node examples/basic-usage.js",
+    "example:advanced": "node examples/advanced-usage.js",
+    "example:signature": "node examples/signature-generation.js"
   },
   "keywords": [
-    "unifiedid",
-    "identity",
+    "unified-id",
     "blockchain",
-    "multi-chain",
     "ethereum",
-    "polygon",
-    "arbitrum",
-    "base",
-    "optimism",
-    "bsc",
-    "avalanche",
-    "sepolia",
-    "functional-programming",
-    "javascript",
-    "sdk"
+    "identity",
+    "cross-chain",
+    "relayer",
+    "sdk",
+    "web3",
+    "defi",
+    "identity-management",
+    "ethereum-sdk",
+    "blockchain-sdk"
   ],
-  "author": "kunalmkv",
+  "author": {
+    "name": "Unified ID Team",
+    "email": "team@unified-id.com",
+    "url": "https://unified-id.com"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/unifiedid/sdk.git"
+    "url": "https://github.com/unified-id/relayer-sdk.git",
+    "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/unifiedid/sdk/issues"
+    "url": "https://github.com/unified-id/relayer-sdk/issues"
   },
-  "homepage": "https://github.com/unifiedid/sdk#readme",
+  "homepage": "https://github.com/unified-id/relayer-sdk#readme",
   "dependencies": {
-    "ethers": "^6.8.1",
-    "axios": "^1.6.0",
-    "lodash": "^4.17.21",
-    "uuid": "^9.0.1",
-    "moment": "^2.29.4",
-    "joi": "^17.11.0",
-    "winston": "^3.11.0",
-    "ramda": "^0.29.1"
+    "ethers": "^6.13.5",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.23.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.28.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.0",
+    "rollup": "^4.0.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-babel": "^6.0.0",
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
-    "eslint": "^8.52.0",
-    "jest": "^29.7.0",
-    "prettier": "^3.0.3",
-    "jsdoc": "^4.0.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "jsdoc": "^4.0.0"
   },
   "files": [
-    "lib/**/*",
+    "dist/**/*",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "publishConfig": {
     "access": "public"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/unified-id"
   }
 } 
