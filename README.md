@@ -1,500 +1,414 @@
-# UnifiedID SDK
+# Unified ID SDK
 
-A functional programming Node.js SDK for the UnifiedID system - Multi-chain identity resolution and management.
+A functional JavaScript SDK for Unified ID registration and management with blockchain wallet integration.
 
 ## Features
 
-- 🚀 **Functional Programming Approach** - Pure functions and immutable data structures
-- 🔗 **Multi-Chain Support** - Ethereum, Polygon, Arbitrum, Base, Optimism, BSC, Avalanche, and Sepolia
-- ✍️ **Automatic Signature Creation** - EIP-712 signature generation for all operations
-- 🔍 **Identity Resolution** - Resolve UnifiedIDs to addresses and vice versa
-- 📊 **Real-time Monitoring** - Event-driven architecture with comprehensive logging
-- 🛡️ **Type Safety** - Comprehensive validation and error handling
-- ⚡ **High Performance** - Optimized for production use with retry mechanisms
+- 🔐 **Wallet Integration**: Support for private keys and MetaMask wallets
+- 📝 **Unified ID Registration**: Register new unified IDs with cryptographic signatures
+- 🔗 **Secondary Address Management**: Add secondary addresses to existing unified IDs
+- 🌐 **HTTP API Integration**: Seamless integration with your backend API
+- ⚡ **Functional Design**: Pure functions with no class-based architecture
+- 🔒 **Security**: EIP-191 compliant signatures and secure nonce management
 
 ## Installation
 
 ```bash
-npm install @unifiedid/sdk
+npm install unified-id-sdk
 ```
 
 ## Quick Start
 
+### Basic Usage with Private Key
+
 ```javascript
-const { UnifiedID } = require('@unifiedid/sdk');
-const { ethers } = require('ethers');
+const { registerUnifiedId, addSecondaryAddress, changePrimaryAddress } = require('unified-id-sdk');
 
-// Initialize SDK
-const unifiedId = new UnifiedID({
-  apiUrl: 'http://localhost:3000',
-  rpcUrls: {
-    11155111: 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID', // Sepolia
-    1: 'https://mainnet.infura.io/v3/YOUR_PROJECT_ID' // Ethereum
-  },
-  contractAddresses: {
-    mother: {
-      11155111: '0x6E88e069dA65b621b87FDbDdC2858A6F9d8A5202', // Sepolia
-      1: '0x...' // Ethereum
-    }
-  }
+// Configuration
+const config = {
+  baseURL: 'https://api.unifiedid.com',
+  authToken: 'your-bearer-token-here',
+  chainId: '11155111', // Sepolia testnet
+  motherContractAddress: '0x35e58899007352e79d371EAd3bCe61E124ed8b8f'
+};
+
+// Register a new unified ID
+const result = await registerUnifiedId({
+  unifiedId: 'my-unified-id',
+  wallet: '0x123...', // Private key
+  rpcUrl: 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID',
+  config: config
 });
 
-// Set up signer (e.g., MetaMask)
-const provider = new ethers.BrowserProvider(window.ethereum);
-const signer = await provider.getSigner();
-unifiedId.setSigner(signer);
+if (result.success) {
+  console.log('Registration successful:', result.data);
+} else {
+  console.log('Registration failed:', result.error);
+}
 
-// Register a UnifiedID
-const result = await unifiedId.registerUnifiedId({
-  unifiedId: 'alice.eth',
-  primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111
+// Change primary address
+const changeResult = await changePrimaryAddress({
+  unifiedId: 'my-unified-id',
+  currentWallet: '0x123...', // Current primary private key
+  newWallet: '0x456...',     // New primary private key
+  rpcUrl: 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID',
+  config: config
 });
-
-console.log('Registration result:', result);
 ```
 
-## Configuration
-
-### Basic Configuration
+### MetaMask Integration
 
 ```javascript
-const config = {
-  // API endpoint
-  apiUrl: 'http://localhost:3000',
-  
-  // RPC URLs for each chain
-  rpcUrls: {
-    1: 'https://mainnet.infura.io/v3/YOUR_PROJECT_ID',
-    11155111: 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID',
-    137: 'https://polygon-rpc.com',
-    42161: 'https://arb1.arbitrum.io/rpc'
-  },
-  
-  // Contract addresses
-  contractAddresses: {
-    mother: {
-      1: '0x...',
-      11155111: '0x6E88e069dA65b621b87FDbDdC2858A6F9d8A5202'
-    },
-    child: {
-      1: '0x...',
-      11155111: '0x...'
-    },
-    resolver: {
-      1: '0x...',
-      11155111: '0x...'
-    }
-  },
-  
-  // Timeouts
-  timeouts: {
-    transaction: 300000, // 5 minutes
-    confirmation: 300000, // 5 minutes
-    api: 30000 // 30 seconds
-  },
-  
-  // Retry configuration
-  retries: {
-    maxAttempts: 3,
-    backoffMultiplier: 2,
-    maxBackoff: 30000
-  },
-  
-  // Logging
-  logging: {
-    level: 'info',
-    enabled: true
-  }
-};
+const { registerUnifiedId, getWallet } = require('unified-id-sdk');
+
+// Connect to MetaMask
+const accounts = await window.ethereum.request({ 
+  method: 'eth_requestAccounts' 
+});
+
+// Get wallet instance
+const wallet = getWallet(window.ethereum, rpcUrl);
+
+// Register unified ID
+const result = await registerUnifiedId({
+  unifiedId: 'my-unified-id',
+  wallet: wallet,
+  rpcUrl: rpcUrl,
+  config: config
+});
 ```
 
 ## API Reference
 
-### Core Operations
+### Core Functions
 
-#### Register UnifiedID
+#### `registerUnifiedId(params)`
 
+Register a new unified ID.
+
+**Parameters:**
+- `unifiedId` (string): The unified ID to register
+- `wallet` (string|Object): Private key string or wallet object
+- `rpcUrl` (string): RPC URL for the blockchain network
+- `config` (Object): SDK configuration
+
+**Returns:**
 ```javascript
-// Automatic signature creation
-const result = await unifiedId.registerUnifiedId({
-  unifiedId: 'alice.eth',
-  primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111
-});
-
-// Manual signature creation
-const result = await unifiedId.registerUnifiedId({
-  unifiedId: 'alice.eth',
-  primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111,
-  masterSignatureData: {
-    signature: '0x...',
-    deadline: 1234567890,
-    nonce: 123
-  },
-  primarySignatureData: {
-    signature: '0x...',
-    deadline: 1234567890,
-    nonce: 124
-  }
-});
-```
-
-#### Update UnifiedID
-
-```javascript
-const result = await unifiedId.updateUnifiedId({
-  oldUnifiedId: 'alice.eth',
-  newUnifiedId: 'alice_new.eth',
-  chainId: 11155111
-});
-```
-
-#### Update Primary Address
-
-```javascript
-const result = await unifiedId.updatePrimaryAddress({
-  unifiedId: 'alice.eth',
-  newPrimaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111
-});
-```
-
-#### Add Secondary Address
-
-```javascript
-const result = await unifiedId.addSecondaryAddress({
-  unifiedId: 'alice.eth',
-  secondaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111
-});
-```
-
-#### Remove Secondary Address
-
-```javascript
-const result = await unifiedId.removeSecondaryAddress({
-  unifiedId: 'alice.eth',
-  secondaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  chainId: 11155111
-});
-```
-
-### Resolution Operations
-
-#### Resolve UnifiedID to Primary Address
-
-```javascript
-const primaryAddress = await unifiedId.resolvers.resolvePrimaryAddress('alice.eth', 11155111);
-console.log('Primary address:', primaryAddress);
-```
-
-#### Resolve Address to UnifiedID
-
-```javascript
-const unifiedId = await unifiedId.resolvers.resolveUnifiedId('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', 11155111);
-console.log('UnifiedID:', unifiedId);
-```
-
-#### Get Complete UnifiedID Information
-
-```javascript
-const info = await unifiedId.resolvers.getUnifiedIdInfo('alice.eth', 11155111);
-console.log('UnifiedID info:', info);
-// {
-//   unifiedId: 'alice.eth',
-//   masterAddress: '0x...',
-//   primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-//   secondaryAddresses: ['0x...', '0x...'],
-//   chainId: 11155111,
-//   blockNumber: 123456,
-//   transactionHash: '0x...',
-//   timestamp: 1234567890
-// }
-```
-
-#### Get Multi-Chain Information
-
-```javascript
-const multiChainInfo = await unifiedId.resolvers.getMultiChainUnifiedIdInfo('alice.eth');
-console.log('Multi-chain info:', multiChainInfo);
-// {
-//   unifiedId: 'alice.eth',
-//   masterAddress: '0x...',
-//   chains: {
-//     1: {
-//       primaryAddress: '0x...',
-//       secondaryAddresses: ['0x...'],
-//       blockNumber: 123456,
-//       transactionHash: '0x...',
-//       timestamp: 1234567890
-//     },
-//     11155111: {
-//       primaryAddress: '0x...',
-//       secondaryAddresses: ['0x...'],
-//       blockNumber: 123456,
-//       transactionHash: '0x...',
-//       timestamp: 1234567890
-//     }
-//   }
-// }
-```
-
-#### Check Address Association
-
-```javascript
-const association = await unifiedId.resolvers.checkAddressAssociation(
-  'alice.eth',
-  '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-  11155111
-);
-console.log('Association:', association);
-// {
-//   unifiedId: 'alice.eth',
-//   isPrimary: true,
-//   isSecondary: false,
-//   chainId: 11155111
-// }
-```
-
-#### Get All Addresses
-
-```javascript
-const addresses = await unifiedId.resolvers.getAllAddresses('alice.eth', 11155111);
-console.log('All addresses:', addresses);
-// {
-//   primary: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-//   secondary: ['0x...', '0x...'],
-//   all: ['0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', '0x...', '0x...']
-// }
-```
-
-### Batch Operations
-
-#### Batch Resolve UnifiedIDs
-
-```javascript
-const results = await unifiedId.resolvers.batchResolveUnifiedIds(
-  ['alice.eth', 'bob.eth', 'charlie.eth'],
-  11155111
-);
-console.log('Batch results:', results);
-```
-
-#### Batch Resolve Addresses
-
-```javascript
-const results = await unifiedId.resolvers.batchResolveAddresses(
-  ['0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', '0x...', '0x...'],
-  11155111
-);
-console.log('Batch results:', results);
-```
-
-#### Batch Operations
-
-```javascript
-const operations = [
-  {
-    type: 'register',
-    params: {
-      unifiedId: 'alice.eth',
-      primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-      chainId: 11155111
-    }
-  },
-  {
-    type: 'add-secondary',
-    params: {
-      unifiedId: 'alice.eth',
-      secondaryAddress: '0x...',
-      chainId: 11155111
-    }
-  }
-];
-
-const results = await unifiedId.operations.batchOperations(operations);
-console.log('Batch operation results:', results);
-```
-
-### Signature Utilities
-
-#### Create Domain
-
-```javascript
-const domain = unifiedId.createDomain(
-  '0x6E88e069dA65b621b87FDbDdC2858A6F9d8A5202',
-  11155111,
-  'UnifiedID',
-  '1'
-);
-```
-
-#### Batch Create Signatures
-
-```javascript
-const operations = [
-  {
-    type: 'RegisterUnifiedId',
-    unifiedId: 'alice.eth',
-    primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-    nonce: 123
-  }
-];
-
-const signatures = await unifiedId.batchCreateSignatures(
-  operations,
-  11155111,
-  unifiedId.createDeadline(30)
-);
-```
-
-### System Monitoring
-
-#### Health Check
-
-```javascript
-const health = await unifiedId.healthCheck();
-console.log('System health:', health);
-// {
-//   status: 'healthy',
-//   timestamp: 1234567890,
-//   data: { ... }
-// }
-```
-
-#### Get Statistics
-
-```javascript
-const stats = await unifiedId.getStats();
-console.log('System stats:', stats);
-```
-
-#### Get Queue Status
-
-```javascript
-const queueStatus = await unifiedId.getQueueStatus();
-console.log('Queue status:', queueStatus);
-```
-
-### Event Handling
-
-```javascript
-// Listen for operation events
-unifiedId.on('operation:started', (event) => {
-  console.log('Operation started:', event);
-});
-
-unifiedId.on('operation:completed', (event) => {
-  console.log('Operation completed:', event);
-});
-
-unifiedId.on('operation:failed', (event) => {
-  console.log('Operation failed:', event);
-});
-
-// Remove event listener
-unifiedId.off('operation:started', listener);
-```
-
-### Validation
-
-```javascript
-// Validate UnifiedID format
-const isValid = unifiedId.isValidUnifiedId('alice.eth'); // true
-const isInvalid = unifiedId.isValidUnifiedId('invalid@id'); // false
-
-// Validate Ethereum address
-const isValidAddr = unifiedId.isValidAddress('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6'); // true
-const isInvalidAddr = unifiedId.isValidAddress('invalid-address'); // false
-
-// Validate configuration
-const validation = unifiedId.validateConfig();
-if (!validation.isValid) {
-  console.log('Configuration errors:', validation.errors);
+{
+  success: boolean,
+  data?: Object,        // API response data
+  payload?: Object,     // Request payload sent
+  error?: string,       // Error message if failed
+  details?: Object      // Additional error details
 }
 ```
 
-## Advanced Usage
+#### `addSecondaryAddress(params)`
 
-### Custom Error Handling
+Add a secondary address to an existing unified ID.
+
+**Parameters:**
+- `unifiedId` (string): The unified ID
+- `primaryWallet` (string|Object): Primary wallet private key or object
+- `secondaryWallet` (string|Object): Secondary wallet private key or object
+- `rpcUrl` (string): RPC URL for the blockchain network
+- `config` (Object): SDK configuration
+
+**Returns:**
+```javascript
+{
+  success: boolean,
+  data?: Object,
+  payload?: Object,
+  error?: string,
+  details?: Object
+}
+```
+
+#### `removeSecondaryAddress(params)`
+
+Remove a secondary address from an existing unified ID.
+
+**Parameters:**
+- `unifiedId` (string): The unified ID
+- `secondaryAddress` (string): The secondary address to remove
+- `primaryWallet` (string|Object): Primary wallet private key or object
+- `rpcUrl` (string): RPC URL for the blockchain network
+- `config` (Object): SDK configuration
+
+**Returns:**
+```javascript
+{
+  success: boolean,
+  data?: Object,
+  payload?: Object,
+  error?: string,
+  details?: Object
+}
+```
+
+#### `changePrimaryAddress(params)`
+
+Change the primary address for an existing unified ID.
+
+**Parameters:**
+- `unifiedId` (string): The unified ID
+- `currentWallet` (string|Object): Current primary wallet private key or object
+- `newWallet` (string|Object): New primary wallet private key or object
+- `rpcUrl` (string): RPC URL for the blockchain network
+- `config` (Object): SDK configuration
+
+**Returns:**
+```javascript
+{
+  success: boolean,
+  data?: Object,
+  payload?: Object,
+  error?: string,
+  details?: Object
+}
+```
+
+#### `getUnifiedIdInfo(unifiedId, config)`
+
+Get information about a unified ID.
+
+**Parameters:**
+- `unifiedId` (string): The unified ID to query
+- `config` (Object): SDK configuration
+
+**Returns:**
+```javascript
+{
+  success: boolean,
+  data?: Object,
+  error?: string,
+  details?: Object
+}
+```
+
+### Utility Functions
+
+#### `getWallet(walletInput, rpcUrl)`
+
+Create a wallet instance from private key or wallet object.
+
+#### `getProvider(rpcUrl)`
+
+Create an ethers provider for the specified RPC URL.
+
+#### `getNonce(unifiedId, motherContractAddress, rpcUrl)`
+
+Get the current nonce for a unified ID from the Mother contract.
+
+#### `createSignature(unifiedId, userAddress, nonce, wallet)`
+
+Create a cryptographic signature for unified ID operations.
+
+#### `createPrimaryChangeSignature(unifiedId, newAddress, nonce, wallet)`
+
+Create a cryptographic signature for primary address change operations.
+
+#### `createRemoveSecondarySignature(unifiedId, secondaryAddress, nonce, wallet)`
+
+Create a cryptographic signature for removing secondary address operations.
+
+#### `createOptions(nonce, deadlineOffset)`
+
+Create options blob with nonce and deadline.
+
+#### `verifyWalletConnection(wallet)`
+
+Verify that a wallet is properly connected.
+
+#### `createHttpClient(config)`
+
+Create an HTTP client with the specified configuration.
+
+### Configuration
+
+The SDK accepts the following configuration options:
 
 ```javascript
-try {
-  const result = await unifiedId.registerUnifiedId({
-    unifiedId: 'alice.eth',
-    primaryAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-    chainId: 11155111
+const config = {
+  baseURL: 'https://api.unifiedid.com',           // API base URL
+  timeout: 30000,                                 // HTTP timeout in ms
+  chainId: '11155111',                           // Blockchain chain ID
+  motherContractAddress: '0x...',                // Mother contract address
+  authToken: 'your-bearer-token'                 // Optional auth token
+};
+```
+
+## HTTP Request Format
+
+The SDK automatically formats HTTP requests according to your specification:
+
+### Registration Request
+```javascript
+{
+  "userAddress": "0xd6eD91e314eD980aF958ced1b71721ee8A8b5E03",
+  "unifiedId": "kunal_test_1",
+  "chainId": "11155111",
+  "nonce": "0",
+  "action": "initiate-register-unifiedid",
+  "masterSignature": "0x1729b7c4b01d646cff524c5116a036aacd6298e798692206fbdb274003c05a555e8e9838ad3f387b5009f0b7c1a14658c8aeaf92131082e5562b421d937d220e1b",
+  "primarySignature": "0x1729b7c4b01d646cff524c5116a036aacd6298e798692206fbdb274003c05a555e8e9838ad3f387b5009f0b7c1a14658c8aeaf92131082e5562b421d937d220e1b",
+  "options": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000687b9f3c"
+}
+```
+
+**Headers:**
+- `Content-Type: application/json`
+- `Authorization: Bearer your-token`
+
+## Examples
+
+### Complete Registration Flow
+
+```javascript
+const { registerUnifiedId, addSecondaryAddress, removeSecondaryAddress, changePrimaryAddress, getUnifiedIdInfo } = require('unified-id-sdk');
+
+async function completeFlow() {
+  const config = {
+    baseURL: 'https://api.unifiedid.com',
+    authToken: 'your-token',
+    chainId: '11155111',
+    motherContractAddress: '0x35e58899007352e79d371EAd3bCe61E124ed8b8f'
+  };
+
+  const rpcUrl = 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID';
+  const primaryPk = '0x123...';
+  const secondaryPk = '0x456...';
+
+  // 1. Register unified ID
+  const registration = await registerUnifiedId({
+    unifiedId: 'my-unified-id',
+    wallet: primaryPk,
+    rpcUrl: rpcUrl,
+    config: config
   });
-} catch (error) {
-  if (error.code === 'VALIDATION_ERROR') {
-    console.log('Validation failed:', error.details.errors);
-  } else if (error.code === 'API_ERROR') {
-    console.log('API error:', error.details);
-  } else if (error.code === 'NETWORK_ERROR') {
-    console.log('Network error:', error.details);
-  } else {
-    console.log('Unknown error:', error);
+
+  if (registration.success) {
+    console.log('✅ Registration successful');
+    
+    // 2. Add secondary address
+    const secondary = await addSecondaryAddress({
+      unifiedId: 'my-unified-id',
+      primaryWallet: primaryPk,
+      secondaryWallet: secondaryPk,
+      rpcUrl: rpcUrl,
+      config: config
+    });
+
+          if (secondary.success) {
+        console.log('✅ Secondary address added');
+        
+        // 3. Remove secondary address
+        const removeResult = await removeSecondaryAddress({
+          unifiedId: 'my-unified-id',
+          secondaryAddress: '0x456...', // Address to remove
+          primaryWallet: primaryPk,
+          rpcUrl: rpcUrl,
+          config: config
+        });
+
+        if (removeResult.success) {
+          console.log('✅ Secondary address removed');
+          
+          // 4. Change primary address
+          const changeResult = await changePrimaryAddress({
+            unifiedId: 'my-unified-id',
+            currentWallet: primaryPk,
+            newWallet: secondaryPk,
+            rpcUrl: rpcUrl,
+            config: config
+          });
+
+          if (changeResult.success) {
+            console.log('✅ Primary address changed');
+            
+            // 5. Get unified ID info
+            const info = await getUnifiedIdInfo('my-unified-id', config);
+            if (info.success) {
+              console.log('✅ Unified ID info:', info.data);
+            }
+          }
+        }
+      }
+  }
+}
+
+### MetaMask Integration
+
+```javascript
+// In a web browser environment
+async function connectAndRegister() {
+  // Connect to MetaMask
+  const accounts = await window.ethereum.request({ 
+    method: 'eth_requestAccounts' 
+  });
+  
+  const wallet = getWallet(window.ethereum, rpcUrl);
+  
+  // Register unified ID
+  const result = await registerUnifiedId({
+    unifiedId: 'my-unified-id',
+    wallet: wallet,
+    rpcUrl: rpcUrl,
+    config: config
+  });
+  
+  return result;
+}
+```
+
+## Error Handling
+
+The SDK returns structured error responses:
+
+```javascript
+const result = await registerUnifiedId(params);
+
+if (!result.success) {
+  console.error('Error:', result.error);
+  console.error('Details:', result.details);
+  
+  // Handle specific error types
+  if (result.error.includes('nonce')) {
+    // Handle nonce-related errors
+  } else if (result.error.includes('signature')) {
+    // Handle signature-related errors
   }
 }
 ```
 
-### Custom Logging
+## Security Considerations
 
-```javascript
-const unifiedId = new UnifiedID({
-  // ... other config
-  logging: {
-    level: 'debug',
-    enabled: true
-  }
-});
+1. **Private Keys**: Never expose private keys in client-side code
+2. **Network Security**: Use HTTPS for all API communications
+3. **Token Management**: Store authentication tokens securely
+4. **Nonce Management**: The SDK automatically handles nonce retrieval and management
+5. **Signature Verification**: All signatures follow EIP-191 standards
 
-// Custom logger
-unifiedId.logger.info('Custom log message');
-unifiedId.logger.error('Error message', { error: 'details' });
+## Development
+
+### Building the Package
+
+```bash
+npm run build
 ```
 
-### Provider Management
+### Running Tests
 
-```javascript
-// Get provider for specific chain
-const provider = unifiedId.getProvider(11155111);
-
-// Check if chain is supported
-const isSupported = unifiedId.isChainSupported(11155111); // true
+```bash
+npm test
 ```
 
-## Supported Chains
+### Development Mode
 
-- **Ethereum Mainnet** (1)
-- **Sepolia Testnet** (11155111)
-- **Polygon** (137)
-- **Arbitrum** (42161)
-- **Base** (8453)
-- **Optimism** (10)
-- **BSC** (56)
-- **Avalanche** (43114)
-
-## Error Codes
-
-- `VALIDATION_ERROR` - Invalid parameters or data format
-- `API_ERROR` - API request failed
-- `NETWORK_ERROR` - Network connectivity issues
-- `TRANSACTION_ERROR` - Blockchain transaction failed
-- `INSUFFICIENT_FUNDS` - Insufficient funds for transaction
-- `NONCE_EXPIRED` - Transaction nonce has expired
-- `REPLACEMENT_UNDERPRICED` - Replacement transaction underpriced
-- `UNKNOWN_ERROR` - Unknown error occurred
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+```bash
+npm run dev
+```
 
 ## License
 
@@ -502,17 +416,4 @@ MIT License - see LICENSE file for details.
 
 ## Support
 
-For support and questions:
-- Create an issue on GitHub
-- Check the documentation
-- Join our community Discord
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- Multi-chain support
-- EIP-712 signature creation
-- Identity resolution
-- Event-driven architecture
-- Comprehensive error handling 
+For support and questions, please open an issue on GitHub or contact the development team. 
