@@ -4,9 +4,9 @@ const axios = require('axios');
 
 // Core configuration
 const DEFAULT_CONFIG = {
-  baseURL: process.env.API_URL, // Replace with your actual API URL
-  timeout: process.env.TIMEOUT,
-  chainId: process.env.CHAIN_ID, // Sepolia testnet
+  baseURL: process.env.API_URL,        
+  authToken: process.env.AUTH_TOKEN,
+  chainId: process.env.CHAIN_ID, 
   motherContractAddress: process.env.MOTHER_CONTRACT_ADDRESS
 };
 
@@ -21,9 +21,7 @@ const MOTHER_CONTRACT_ABI = [
  * @param {Object} config - Configuration object
  * @returns {Object} Axios instance
  */
-const createHttpClient = (config = {
-  authToken : "eJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Imh1c2llbiIsImlhdCI6MTUxNjIzOTAyMn0.I6C9sJ9JD1j21td45PwLKMyJTqbhaefFSfcYcTN2GWQ"
-}) => {
+const createHttpClient = (config = {}) => {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
   
   return axios.create({
@@ -31,7 +29,7 @@ const createHttpClient = (config = {
     timeout: finalConfig.timeout,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': config.authToken ? `Bearer ${config.authToken}` : undefined
+      'Authorization': finalConfig.authToken ? `Bearer ${finalConfig.authToken}` : undefined
     }
   });
 };
