@@ -2,8 +2,7 @@
   "name": "unified-id-sdk",
   "version": "1.0.0",
   "description": "JavaScript SDK for Unified ID registration and management",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.js",
   "scripts": {
     "lint": "eslint src/**/*.js",
     "prepublishOnly": "npm run build"
@@ -25,7 +24,7 @@
   "devDependencies": {
   },
   "files": [
-    "dist",
+    "src",
     "README.md"
   ],
   "repository": {
