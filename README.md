@@ -1,13 +1,11 @@
 # Unified ID SDK
 
-A functional JavaScript SDK for Unified ID registration and management with blockchain wallet integration.
+A functional JavaScript SDK for Unified ID registration and management.
 
 ## Features
 
-- 🔐 **Wallet Integration**: Support for private keys and MetaMask wallets
 - 📝 **Unified ID Registration**: Register new unified IDs with cryptographic signatures
-- 🔗 **Secondary Address Management**: Add secondary addresses to existing unified IDs
-- 🌐 **HTTP API Integration**: Seamless integration with your backend API
+- 🔗 **Secondary Address Management**: Add and remove secondary addresses
 - ⚡ **Class-based Design**: Easy-to-use UnifiedIdSDK class
 - 🔒 **Security**: EIP-191 compliant signatures and secure nonce management
 
@@ -17,11 +15,23 @@ A functional JavaScript SDK for Unified ID registration and management with bloc
 npm install unified-id-sdk
 ```
 
-## Quick Start
+## Quick Integration Checklist
 
-### SDK Initialization
+1. **Install ethers.js** (if not already):
+   ```bash
+   npm install ethers
+   ```
+2. **Create wallets using ethers.Wallet** (not via SDK)
+3. **Initialize the SDK with config** (see below)
+4. **Use SDK utility functions for nonce and signature message**
+5. **Sign messages with your wallet**
+6. **Call the SDK class methods for API actions**
 
-You **must** provide all config values explicitly. There are no defaults or environment variable fallbacks.
+---
+
+## SDK Initialization
+
+You **must** provide all config values explicitly. There are no defaults or environment variable fallbacks. The contract address is set automatically based on `environment` and `chainId`.
 
 ```javascript
 const UnifiedIdSDK = require('unified-id-sdk');
@@ -30,7 +40,6 @@ const config = {
   baseURL: 'https://api.unifiedid.com',           // API base URL (required)
   authToken: 'your-bearer-token-here',           // Auth token (required)
   chainId: 11155111,                             // Blockchain chain ID (required, e.g. Sepolia)
-  motherContractAddress: '0x35e58899007352e79d371EAd3bCe61E124ed8b8f', // Contract address (required)
   environment: 'testnet'                         // 'testnet' or 'mainnet' (required)
 };
 
@@ -42,27 +51,22 @@ If any config value is missing or invalid, the SDK will throw an error.
 ### Environment and Chain ID Validation
 
 - `environment` must be either `'testnet'` or `'mainnet'`.
-- The `chainId` must match the allowed values for the selected environment:
-
-| Environment | Allowed Chain IDs         |
-|-------------|--------------------------|
-| mainnet     | 1 (Ethereum), 137 (Polygon), 56 (BSC), ... |
-| testnet     | 11155111 (Sepolia), 5 (Goerli), 80001 (Polygon Mumbai), 97 (BSC Testnet), ... |
-
-If you provide a chainId that does not match the environment, the SDK will throw an error.
+- The `chainId` must match the allowed values for the selected environment.
+- The contract address is set automatically; **do not provide it manually**.
 
 ---
 
 ## Usage Examples
 
-### Register a New Unified ID
+### 1. Register a New Unified ID
 
 ```javascript
-const { getWallet, getNonce, createSignatureMessage } = require('unified-id-sdk');
+const { ethers } = require('ethers');
+const { getNonce, createSignatureMessage } = require('unified-id-sdk');
 
-const wallet = getWallet('0xYOUR_PRIVATE_KEY', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const wallet = new ethers.Wallet('0xYOUR_PRIVATE_KEY', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
 const userAddress = wallet.address;
-const nonce = await getNonce('my-unified-id', config.motherContractAddress, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('register', {
   unifiedId: 'my-unified-id',
   userAddress,
@@ -76,21 +80,15 @@ const result = await sdk.registerUnifiedId({
   nonce: Number(nonce),
   signature
 });
-
-if (result.success) {
-  console.log('Registration successful:', result.data);
-} else {
-  console.log('Registration failed:', result.error);
-}
 ```
 
-### Add a Secondary Address
+### 2. Add a Secondary Address
 
 ```javascript
-const primaryWallet = getWallet('0xPRIMARY_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-const secondaryWallet = getWallet('0xSECONDARY_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
+const secondaryWallet = new ethers.Wallet('0xSECONDARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
 const secondaryAddress = secondaryWallet.address;
-const nonce = await getNonce('my-unified-id', config.motherContractAddress, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('register', {
   unifiedId: 'my-unified-id',
   userAddress: secondaryAddress,
@@ -108,11 +106,11 @@ const result = await sdk.addSecondaryAddress({
 });
 ```
 
-### Remove a Secondary Address
+### 3. Remove a Secondary Address
 
 ```javascript
-const primaryWallet = getWallet('0xPRIMARY_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-const nonce = await getNonce('my-unified-id', config.motherContractAddress, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
+const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('removeSecondary', {
   unifiedId: 'my-unified-id',
   secondaryAddress: '0xSECONDARY_ADDRESS',
@@ -128,13 +126,33 @@ const result = await sdk.removeSecondaryAddress({
 });
 ```
 
-### Change Primary Address
+### 4. Update Unified ID
 
 ```javascript
-const currentWallet = getWallet('0xCURRENT_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-const newWallet = getWallet('0xNEW_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
+const nonce = await getNonce('old-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const hash = createSignatureMessage('updateUnifiedId', {
+  oldUnifiedId: 'old-unified-id',
+  newUnifiedId: 'new-unified-id',
+  nonce: Number(nonce)
+});
+const signature = await primaryWallet.signMessage(ethers.utils.arrayify(hash));
+
+const result = await sdk.updateUnifiedId({
+  oldUnifiedId: 'old-unified-id',
+  newUnifiedId: 'new-unified-id',
+  nonce: Number(nonce),
+  signature
+});
+```
+
+### 5. Change Primary Address
+
+```javascript
+const currentWallet = new ethers.Wallet('0xCURRENT_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
+const newWallet = new ethers.Wallet('0xNEW_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
 const newAddress = newWallet.address;
-const nonce = await getNonce('my-unified-id', config.motherContractAddress, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('primaryChange', {
   unifiedId: 'my-unified-id',
   newAddress,
@@ -152,26 +170,6 @@ const result = await sdk.changePrimaryAddress({
 });
 ```
 
-### Update Unified ID
-
-```javascript
-const primaryWallet = getWallet('0xPRIMARY_PK', 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-const nonce = await getNonce('old-unified-id', config.motherContractAddress, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-const hash = createSignatureMessage('updateUnifiedId', {
-  oldUnifiedId: 'old-unified-id',
-  newUnifiedId: 'new-unified-id',
-  nonce: Number(nonce)
-});
-const signature = await primaryWallet.signMessage(ethers.utils.arrayify(hash));
-
-const result = await sdk.updateUnifiedId({
-  oldUnifiedId: 'old-unified-id',
-  newUnifiedId: 'new-unified-id',
-  nonce: Number(nonce),
-  signature
-});
-```
-
 ---
 
 ## Utility Functions and Named Exports
@@ -179,11 +177,10 @@ const result = await sdk.updateUnifiedId({
 You can use the following utility functions directly:
 
 ```javascript
-const { getWallet, getProvider, getNonce, createSignatureMessage, createOptions } = require('unified-id-sdk');
+const { getProvider, getNonce, createSignatureMessage, createOptions } = require('unified-id-sdk');
 ```
-- `getWallet(walletInput, rpcUrl)`
 - `getProvider(rpcUrl)`
-- `getNonce(unifiedId, motherContractAddress, rpcUrl)`
+- `getNonce(unifiedId, config, rpcUrl)`
 - `createSignatureMessage(operation, params)`
 - `createOptions(nonce, deadlineOffset)`
 

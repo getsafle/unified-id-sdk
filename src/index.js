@@ -1,11 +1,7 @@
 const { ethers } = require('ethers');
 const axios = require('axios');
-
-// Mother contract ABI for nonce retrieval
-const MOTHER_CONTRACT_ABI = [
-  "function nonces(string) view returns (uint256)",
-  "function getNonce(string) view returns (uint256)"
-];
+const MOTHER_CONTRACT_ABI = require('./abis/mother-contract-abi.json');
+const { CHAIN_ID_MAP, CONTRACT_ADDRESS_MAP } = require('./config');
 
 /**
  * Create HTTP client with configuration
@@ -35,38 +31,17 @@ const getProvider = (rpcUrl) => {
 };
 
 /**
- * Get wallet from private key or connect to MetaMask
- * @param {string|Object} walletInput - Private key string or wallet object
- * @param {string} rpcUrl - RPC URL for the network
- * @returns {Object} Ethers wallet
- */
-const getWallet = (walletInput, rpcUrl) => {
-  const provider = getProvider(rpcUrl);
-  
-  if (typeof walletInput === 'string') {
-    // Private key provided
-    return new ethers.Wallet(walletInput, provider);
-  } else if (walletInput && walletInput.signMessage) {
-    // Wallet object provided (e.g., MetaMask)
-    return walletInput.connect(provider);
-  } else {
-    throw new Error('Invalid wallet input. Provide private key string or wallet object.');
-  }
-};
-
-/**
  * Get current nonce from Mother contract
  * @param {string} unifiedId - Unified ID
- * @param {string} motherContractAddress - Mother contract address
+ * @param {Object} config - SDK configuration
  * @param {string} rpcUrl - RPC URL
  * @returns {Promise<string>} Current nonce
  */
-const getNonce = async (unifiedId, motherContractAddress, rpcUrl) => {
+const getNonce = async (unifiedId, config, rpcUrl) => {
+  const motherContractAddress = getMotherContractAddress(config);
   const provider = getProvider(rpcUrl);
   const mother = new ethers.Contract(motherContractAddress, MOTHER_CONTRACT_ABI, provider);
-  
   try {
-    // Try both function names for compatibility
     const nonce = await mother.nonces(unifiedId);
     return nonce.toString();
   } catch (error) {
@@ -164,7 +139,6 @@ const createSignatureMessage = (operation, params) => {
   const hash = ethers.utils.keccak256(packed);
   return hash;
 };
-
 
 
 /**
@@ -267,28 +241,6 @@ const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primary
       success: false,
       error: error.message,
       details: error.response?.data || null
-    };
-  }
-};
-
-/**
- * Verify wallet connection (useful for MetaMask)
- * @param {Object} wallet - Wallet object
- * @returns {Promise<Object>} Verification result
- */
-const verifyWalletConnection = async (wallet) => {
-  try {
-    const address = await wallet.getAddress();
-    return {
-      success: true,
-      address: address,
-      isConnected: true
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-      isConnected: false
     };
   }
 };
@@ -432,27 +384,12 @@ const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, c
   }
 };
 
-// Supported chain IDs for each environment
-const CHAIN_ID_MAP = {
-  mainnet: [
-   // 1,         // Ethereum Mainnet
-    // Add more mainnet chain IDs as needed
-  ],
-  testnet: [
-    11155111,  // Ethereum Sepolia
-    // 5,         // Ethereum Goerli
-    // 80001,     // Polygon Mumbai
-    // 97,        // BSC Testnet
-    // Add more testnet chain IDs as needed
-  ]
-};
 
 function validateConfig(config) {
   if (!config) throw new Error('Config object is required');
   if (!config.baseURL || typeof config.baseURL !== 'string') throw new Error('Missing or invalid baseURL in config');
   if (!config.authToken || typeof config.authToken !== 'string') throw new Error('Missing or invalid authToken in config');
   if (!config.chainId || isNaN(config.chainId)) throw new Error('Missing or invalid chainId in config');
-  if (!config.motherContractAddress || !ethers.utils.isAddress(config.motherContractAddress)) throw new Error('Missing or invalid motherContractAddress in config');
   if (!config.environment || (config.environment !== 'testnet' && config.environment !== 'mainnet')) {
     throw new Error("'environment' must be either 'testnet' or 'mainnet'");
   }
@@ -460,6 +397,15 @@ function validateConfig(config) {
   if (!CHAIN_ID_MAP[config.environment].includes(chainIdNum)) {
     throw new Error(`Chain ID ${chainIdNum} is not allowed for environment '${config.environment}'. Allowed: [${CHAIN_ID_MAP[config.environment].join(', ')}]`);
   }
+  // Check contract address exists for this environment/chainId
+  if (!CONTRACT_ADDRESS_MAP[config.environment][chainIdNum]) {
+    throw new Error(`No contract address configured for environment '${config.environment}' and chainId ${chainIdNum}`);
+  }
+}
+
+function getMotherContractAddress(config) {
+  const chainIdNum = Number(config.chainId);
+  return CONTRACT_ADDRESS_MAP[config.environment][chainIdNum];
 }
 
 class UnifiedIdSDK {
@@ -520,18 +466,10 @@ class UnifiedIdSDK {
     });
   }
 
-  // Optionally, expose utility methods as instance methods if needed
-  static createSignatureMessage = createSignatureMessage;
-  static getWallet = getWallet;
-  static getProvider = getProvider;
-  static getNonce = getNonce;
-  static createOptions = createOptions;
 }
 
-// Export the class as the main export, and utility functions as named exports
 module.exports = UnifiedIdSDK;
 module.exports.createSignatureMessage = createSignatureMessage;
-module.exports.getWallet = getWallet;
 module.exports.getProvider = getProvider;
 module.exports.getNonce = getNonce;
 module.exports.createOptions = createOptions; 
