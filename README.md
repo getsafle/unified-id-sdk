@@ -68,8 +68,7 @@ const hash = createSignatureMessage('register', {
 });
 ```
 **Step 2: Sign the hash**
-- Dapp/user must sign the hash using their wallet (not shown here).
-- Pass the resulting signature to the SDK method below.
+- Dapp/user must sign the hash using their wallet.
 
 **Step 3: Call the SDK method**
 ```javascript
@@ -120,7 +119,6 @@ const hash = createSignatureMessage('removeSecondary', {
 ```
 **Step 2: Sign the hash**
 - The primary wallet must sign the hash.
-- Pass the signature to the SDK method below.
 
 **Step 3: Call the SDK method**
 ```javascript
@@ -144,8 +142,7 @@ const hash = createSignatureMessage('updateUnifiedId', {
 });
 ```
 **Step 2: Sign the hash**
-- The primary wallet must sign the hash.
-- Pass the signature to the SDK method below.
+- The primary wallet must sign the hash
 
 **Step 3: Call the SDK method**
 ```javascript
@@ -222,26 +219,6 @@ if (!result.success) {
 5. **Signature Verification**: All signatures follow EIP-191 standards
 
 ---
-
-## Development
-
-### Building the Package
-
-```bash
-npm run build
-```
-
-### Running Tests
-
-```bash
-npm test
-```
-
-### Development Mode
-
-```bash
-npm run dev
-```
 
 ## License
 

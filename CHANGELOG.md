@@ -30,5 +30,3 @@
 - `createOptions(nonce, deadlineOffset)`
 
 ---
-
-For all changes, see commit history or contact the development team. 

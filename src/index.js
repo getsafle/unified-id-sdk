@@ -8,15 +8,14 @@ const { CHAIN_ID_MAP, CONTRACT_ADDRESS_MAP } = require('./config');
  * @param {Object} config - Configuration object
  * @returns {Object} Axios instance
  */
-const createHttpClient = (config = {}) => {
-  const finalConfig = { ...config };
+const createHttpClient = (config) => {
   
   return axios.create({
-    baseURL: finalConfig.baseURL,
-    timeout: finalConfig.timeout,
+    baseURL: config.baseURL,
+    timeout: config.timeout,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': finalConfig.authToken ? `Bearer ${finalConfig.authToken}` : undefined
+      'Authorization': config.authToken ? `Bearer ${config.authToken}` : undefined
     }
   });
 };
@@ -166,15 +165,15 @@ const createOptions = (nonce, deadlineOffset = 3600) => {
  * @param {Object} params.config - SDK configuration
  * @returns {Promise<Object>} Registration result
  */
-const registerUnifiedId = async ({ unifiedId, userAddress, nonce, signature, config = {} }) => {
+const registerUnifiedId = async ({ unifiedId, userAddress, nonce, signature, config}) => {
   try {
     if (!signature) throw new Error('Missing required signature for registration');
-    const finalConfig = { ...config };
+   
     // Create options
     const options = createOptions(nonce);
     // Prepare request payload
     const payload = {
-      chainId: finalConfig.chainId,
+      chainId: config.chainId,
       unifiedId: unifiedId,
       userAddress: userAddress,
       nonce: nonce.toString(),
@@ -184,7 +183,7 @@ const registerUnifiedId = async ({ unifiedId, userAddress, nonce, signature, con
       options: options
     };
     // Send HTTP request
-    const httpClient = createHttpClient(finalConfig);
+    const httpClient = createHttpClient(config);
     const response = await httpClient.post('/set-unifiedid', payload);
     return {
       success: true,
@@ -211,10 +210,10 @@ const registerUnifiedId = async ({ unifiedId, userAddress, nonce, signature, con
  * @param {Object} params.config - SDK configuration
  * @returns {Promise<Object>} Result
  */
-const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primarySignature, secondarySignature, config = {} }) => {
+const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primarySignature, secondarySignature, config  }) => {
   try {
     if (!primarySignature || !secondarySignature) throw new Error('Missing required signatures for addSecondaryAddress');
-    const finalConfig = { ...config };
+  
     // Create options
     const options = createOptions(nonce);
     // Prepare request payload
@@ -225,11 +224,11 @@ const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primary
       nonce: nonce.toString(),
       primarySignature: primarySignature,
       secondarySignature: secondarySignature,
-      chainId: finalConfig.chainId,
+      chainId: config.chainId,
       options: options
     };
     // Send HTTP request
-    const httpClient = createHttpClient(finalConfig);
+    const httpClient = createHttpClient(config);
     const response = await httpClient.post('/add-secondary-address', payload);
     return {
       success: true,
@@ -256,10 +255,9 @@ const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primary
  * @param {Object} params.config - SDK configuration
  * @returns {Promise<Object>} Result
  */
-const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrimarySignature, newPrimarySignature, config = {} }) => {
+const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrimarySignature, newPrimarySignature, config}) => {
   try {
     if (!currentPrimarySignature || !newPrimarySignature) throw new Error('Missing required signatures for changePrimaryAddress');
-    const finalConfig = { ...config };
     // Create options with deadline
     const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour deadline
     const options = ethers.utils.defaultAbiCoder.encode(
@@ -268,7 +266,7 @@ const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrima
     );
     // Prepare request payload
     const payload = {
-      chainId: finalConfig.chainId,
+      chainId: config.chainId,
       unifiedId: unifiedId,
       newPrimaryAddress: newAddress,
       nonce: nonce.toString(),
@@ -278,7 +276,7 @@ const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrima
       options: options
     };
     // Send HTTP request
-    const httpClient = createHttpClient(finalConfig);
+    const httpClient = createHttpClient(config);
     const response = await httpClient.post('/update-primary-address', payload);
     return {
       success: true,
@@ -304,16 +302,16 @@ const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrima
  * @param {Object} params.config - SDK configuration
  * @returns {Promise<Object>} Result
  */
-const removeSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, signature, config = {} }) => {
+const removeSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, signature, config  }) => {
   try {
     if (!signature) throw new Error('Missing required signature for removeSecondaryAddress');
-    const finalConfig = { ...config };
+  
     // Create options with deadline
     const options = createOptions(nonce);
     // Prepare request payload
     const payload = {
       action: 'initiate-remove-secondary-address',
-      chainId: finalConfig.chainId,
+      chainId: config.chainId,
       unifiedId: unifiedId,
       secondaryAddress: secondaryAddress,
       nonce: nonce.toString(),
@@ -321,7 +319,7 @@ const removeSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, sign
       options: options
     };
     // Send HTTP request
-    const httpClient = createHttpClient(finalConfig);
+    const httpClient = createHttpClient(config);
     const response = await httpClient.post('/remove-secondary-address', payload);
     return {
       success: true,
@@ -347,10 +345,10 @@ const removeSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, sign
  * @param {Object} params.config - SDK configuration
  * @returns {Promise<Object>} Result
  */
-const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, config = {} }) => {
+const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, config }) => {
   try {
     if (!signature) throw new Error('Missing required signature for updateUnifiedId');
-    const finalConfig = { ...config };
+    
     // Create options with deadline
     const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour deadline
     const options = ethers.utils.defaultAbiCoder.encode(
@@ -368,7 +366,7 @@ const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, c
       options: options
     };
     // Send HTTP request
-    const httpClient = createHttpClient(finalConfig);
+    const httpClient = createHttpClient(config);
     const response = await httpClient.post('/update-unifiedid', payload);
     return {
       success: true,
@@ -468,8 +466,10 @@ class UnifiedIdSDK {
 
 }
 
-module.exports = UnifiedIdSDK;
-module.exports.createSignatureMessage = createSignatureMessage;
-module.exports.getProvider = getProvider;
-module.exports.getNonce = getNonce;
-module.exports.createOptions = createOptions; 
+module.exports = {
+  UnifiedIdSDK,
+  createSignatureMessage,
+  getProvider,
+  getNonce,
+  createOptions
+};

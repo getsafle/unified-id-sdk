@@ -38,7 +38,7 @@ function checkConfig(cfg) {
   }
 }
 
-async function quickRealTest() {
+async function unifiedIdTests() {
   checkConfig(config);
   console.log('🚀 Quick Real API Test\n');
   console.log(config, 'config');
@@ -188,4 +188,4 @@ async function quickRealTest() {
 }
 
 // Run the test
-quickRealTest(); 
+unifiedIdTests(); 
