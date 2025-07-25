@@ -29,4 +29,7 @@
 - `createSignatureMessage(operation, params)`
 - `createOptions(nonce, deadlineOffset)`
 
----
+## [1.0.1] - 2025-07-25
+
+### Summary
+- Removed build step from package file
