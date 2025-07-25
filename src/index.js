@@ -1,383 +1,475 @@
+const { ethers } = require('ethers');
+const axios = require('axios');
+const MOTHER_CONTRACT_ABI = require('./abis/mother-contract-abi.json');
+const { CHAIN_ID_MAP, CONTRACT_ADDRESS_MAP } = require('./config');
+
 /**
- * @fileoverview UnifiedID SDK - Main Entry Point
- * @author kunalmkv
- * @version 1.0.0
+ * Create HTTP client with configuration
+ * @param {Object} config - Configuration object
+ * @returns {Object} Axios instance
  */
-
-const { UnifiedIdSDK, SUPPORTED_CHAINS, DEFAULT_CONFIG } = require('./core/UnifiedIdSDK');
-const { UnifiedIdOperations } = require('./operations/Operations');
-const { UnifiedIdResolvers } = require('./resolvers/Resolvers');
-const SignatureUtils = require('./signatures/SignatureUtils');
-
-// ========================================
-// MAIN SDK CLASS WITH INTEGRATED MODULES
-// ========================================
-
-class UnifiedID {
-  constructor(config = {}) {
-    // Initialize core SDK
-    this.sdk = new UnifiedIdSDK(config);
-    
-    // Initialize modules
-    this.operations = new UnifiedIdOperations(this.sdk);
-    this.resolvers = new UnifiedIdResolvers(this.sdk);
-    
-    // Expose core SDK methods
-    this.healthCheck = this.sdk.healthCheck.bind(this.sdk);
-    this.getStats = this.sdk.getStats.bind(this.sdk);
-    this.getQueueStatus = this.sdk.getQueueStatus.bind(this.sdk);
-    this.validateConfig = this.sdk.validateConfig.bind(this.sdk);
-    this.getSupportedChains = this.sdk.getSupportedChains.bind(this.sdk);
-    this.isChainSupported = this.sdk.isChainSupported.bind(this.sdk);
-    this.setSigner = this.sdk.setSigner.bind(this.sdk);
-    this.getProvider = this.sdk.getProvider.bind(this.sdk);
-    this.on = this.sdk.on.bind(this.sdk);
-    this.off = this.sdk.off.bind(this.sdk);
-    this.emit = this.sdk.emit.bind(this.sdk);
-    
-    // Expose configuration
-    this.config = this.sdk.config;
-    this.logger = this.sdk.logger;
-  }
-
-  // ========================================
-  // CONVENIENCE METHODS
-  // ========================================
-
-  /**
-   * Register UnifiedID with automatic signature creation
-   * @param {Object} params - Registration parameters
-   * @returns {Promise<Object>} Registration result
-   */
-  async registerUnifiedId(params) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for registration. Call setSigner() first.');
+const createHttpClient = (config) => {
+  
+  return axios.create({
+    baseURL: config.baseURL,
+    timeout: config.timeout,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': config.authToken ? `Bearer ${config.authToken}` : undefined
     }
+  });
+};
 
-    // Create signatures if not provided
-    if (!params.masterSignatureData || !params.primarySignatureData) {
-      const domain = SignatureUtils.createDomain(
-        this.config.contractAddresses.mother[params.chainId],
-        params.chainId
-      );
+/**
+ * Get provider for the specified network
+ * @param {string} rpcUrl - RPC URL for the network
+ * @returns {Object} Ethers provider
+ */
+const getProvider = (rpcUrl) => {
+  return new ethers.providers.JsonRpcProvider(rpcUrl);
+};
 
-      const deadline = SignatureUtils.createDeadline(30);
-      const nonce = Date.now();
+/**
+ * Get current nonce from Mother contract
+ * @param {string} unifiedId - Unified ID
+ * @param {Object} config - SDK configuration
+ * @param {string} rpcUrl - RPC URL
+ * @returns {Promise<string>} Current nonce
+ */
+const getNonce = async (unifiedId, config, rpcUrl) => {
+  const motherContractAddress = getMotherContractAddress(config);
+  const provider = getProvider(rpcUrl);
+  const mother = new ethers.Contract(motherContractAddress, MOTHER_CONTRACT_ABI, provider);
+  try {
+    const nonce = await mother.nonces(unifiedId);
+    return nonce.toString();
+  } catch (error) {
+    try {
+      const nonce = await mother.getNonce(unifiedId);
+      return nonce.toString();
+    } catch (fallbackError) {
+      throw new Error(`Failed to get nonce: ${fallbackError.message}`);
+    }
+  }
+};
 
-      if (!params.masterSignatureData) {
-        params.masterSignatureData = await SignatureUtils.createRegisterSignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.primaryAddress,
-          params.chainId,
-          nonce,
-          deadline
-        );
+/**
+ * Create the message hash to be signed for various unified ID operations
+ * @param {string} operation - Type of operation: 'register', 'primaryChange', 'removeSecondary', 'updateUnifiedId'
+ * @param {Object} params - Parameters for the operation
+ * @returns {string} Hash (message) to be signed
+ */
+const createSignatureMessage = (operation, params) => {
+  let inner;
+  let packed;
+  // Parameter validation
+  switch (operation) {
+    case 'register': {
+      if (!params.unifiedId || typeof params.unifiedId !== 'string') {
+        throw new Error('Missing or invalid unifiedId for register operation');
       }
-
-      if (!params.primarySignatureData) {
-        params.primarySignatureData = await SignatureUtils.createRegisterSignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.primaryAddress,
-          params.chainId,
-          nonce + 1,
-          deadline
-        );
+      if (!params.userAddress || !ethers.utils.isAddress(params.userAddress)) {
+        throw new Error('Missing or invalid userAddress for register operation');
       }
-    }
-
-    return this.operations.registerUnifiedId(params);
-  }
-
-  /**
-   * Update UnifiedID with automatic signature creation
-   * @param {Object} params - Update parameters
-   * @returns {Promise<Object>} Update result
-   */
-  async updateUnifiedId(params) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for updates. Call setSigner() first.');
-    }
-
-    // Create signature if not provided
-    if (!params.masterSignatureData) {
-      const domain = SignatureUtils.createDomain(
-        this.config.contractAddresses.mother[params.chainId],
-        params.chainId
-      );
-
-      const deadline = SignatureUtils.createDeadline(30);
-      const nonce = Date.now();
-
-      params.masterSignatureData = await SignatureUtils.createUpdateUnifiedIdSignature(
-        this.sdk.signer,
-        domain,
-        params.oldUnifiedId,
-        params.newUnifiedId,
-        params.chainId,
-        nonce,
-        deadline
-      );
-    }
-
-    return this.operations.updateUnifiedId(params);
-  }
-
-  /**
-   * Update primary address with automatic signature creation
-   * @param {Object} params - Update primary address parameters
-   * @returns {Promise<Object>} Update result
-   */
-  async updatePrimaryAddress(params) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for updates. Call setSigner() first.');
-    }
-
-    // Create signatures if not provided
-    if (!params.currentPrimarySignatureData || !params.newPrimarySignatureData) {
-      const domain = SignatureUtils.createDomain(
-        this.config.contractAddresses.mother[params.chainId],
-        params.chainId
-      );
-
-      const deadline = SignatureUtils.createDeadline(30);
-      const nonce = Date.now();
-
-      if (!params.currentPrimarySignatureData) {
-        params.currentPrimarySignatureData = await SignatureUtils.createUpdatePrimarySignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.newPrimaryAddress,
-          params.chainId,
-          nonce,
-          deadline
-        );
+      if (params.nonce === undefined || params.nonce === null || isNaN(params.nonce)) {
+        throw new Error('Missing or invalid nonce for register operation');
       }
-
-      if (!params.newPrimarySignatureData) {
-        params.newPrimarySignatureData = await SignatureUtils.createUpdatePrimarySignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.newPrimaryAddress,
-          params.chainId,
-          nonce + 1,
-          deadline
-        );
-      }
-    }
-
-    return this.operations.updatePrimaryAddress(params);
-  }
-
-  /**
-   * Add secondary address with automatic signature creation
-   * @param {Object} params - Add secondary address parameters
-   * @returns {Promise<Object>} Add result
-   */
-  async addSecondaryAddress(params) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for adding secondary addresses. Call setSigner() first.');
-    }
-
-    // Create signatures if not provided
-    if (!params.primarySignatureData || !params.secondarySignatureData) {
-      const domain = SignatureUtils.createDomain(
-        this.config.contractAddresses.mother[params.chainId],
-        params.chainId
+      inner = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'address'],
+        [params.unifiedId, params.userAddress]
       );
-
-      const deadline = SignatureUtils.createDeadline(30);
-      const nonce = Date.now();
-
-      if (!params.primarySignatureData) {
-        params.primarySignatureData = await SignatureUtils.createAddSecondarySignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.secondaryAddress,
-          params.chainId,
-          nonce,
-          deadline
-        );
+      packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, params.nonce]);
+      break;
+    }
+    case 'primaryChange': {
+      if (!params.unifiedId || typeof params.unifiedId !== 'string') {
+        throw new Error('Missing or invalid unifiedId for primaryChange operation');
       }
-
-      if (!params.secondarySignatureData) {
-        params.secondarySignatureData = await SignatureUtils.createAddSecondarySignature(
-          this.sdk.signer,
-          domain,
-          params.unifiedId,
-          params.secondaryAddress,
-          params.chainId,
-          nonce + 1,
-          deadline
-        );
+      if (!params.newAddress || !ethers.utils.isAddress(params.newAddress)) {
+        throw new Error('Missing or invalid newAddress for primaryChange operation');
       }
-    }
-
-    return this.operations.addSecondaryAddress(params);
-  }
-
-  /**
-   * Remove secondary address with automatic signature creation
-   * @param {Object} params - Remove secondary address parameters
-   * @returns {Promise<Object>} Remove result
-   */
-  async removeSecondaryAddress(params) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for removing secondary addresses. Call setSigner() first.');
-    }
-
-    // Create signature if not provided
-    if (!params.signatureData) {
-      const domain = SignatureUtils.createDomain(
-        this.config.contractAddresses.mother[params.chainId],
-        params.chainId
+      if (params.nonce === undefined || params.nonce === null || isNaN(params.nonce)) {
+        throw new Error('Missing or invalid nonce for primaryChange operation');
+      }
+      inner = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'address'],
+        [params.unifiedId, params.newAddress]
       );
-
-      const deadline = SignatureUtils.createDeadline(30);
-      const nonce = Date.now();
-
-      params.signatureData = await SignatureUtils.createRemoveSecondarySignature(
-        this.sdk.signer,
-        domain,
-        params.unifiedId,
-        params.secondaryAddress,
-        params.chainId,
-        nonce,
-        deadline
+      packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, params.nonce]);
+      break;
+    }
+    case 'removeSecondary': {
+      if (!params.unifiedId || typeof params.unifiedId !== 'string') {
+        throw new Error('Missing or invalid unifiedId for removeSecondary operation');
+      }
+      if (!params.secondaryAddress || !ethers.utils.isAddress(params.secondaryAddress)) {
+        throw new Error('Missing or invalid secondaryAddress for removeSecondary operation');
+      }
+      if (params.nonce === undefined || params.nonce === null || isNaN(params.nonce)) {
+        throw new Error('Missing or invalid nonce for removeSecondary operation');
+      }
+      inner = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'address'],
+        [params.unifiedId, params.secondaryAddress]
       );
+      packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, params.nonce]);
+      break;
     }
-
-    return this.operations.removeSecondaryAddress(params);
-  }
-
-  // ========================================
-  // UTILITY METHODS
-  // ========================================
-
-  /**
-   * Create deadline timestamp
-   * @param {number} minutesFromNow - Minutes from now
-   * @returns {number} Deadline timestamp
-   */
-  createDeadline(minutesFromNow = 30) {
-    return SignatureUtils.createDeadline(minutesFromNow);
-  }
-
-  /**
-   * Validate UnifiedID format
-   * @param {string} unifiedId - UnifiedID to validate
-   * @returns {boolean} Whether UnifiedID is valid
-   */
-  isValidUnifiedId(unifiedId) {
-    return this.sdk.isValidUnifiedId(unifiedId);
-  }
-
-  /**
-   * Validate Ethereum address
-   * @param {string} address - Address to validate
-   * @returns {boolean} Whether address is valid
-   */
-  isValidAddress(address) {
-    return this.sdk.isValidAddress(address);
-  }
-
-  /**
-   * Create domain for signatures
-   * @param {string} contractAddress - Contract address
-   * @param {number} chainId - Chain ID
-   * @param {string} name - Domain name
-   * @param {string} version - Domain version
-   * @returns {Object} Domain configuration
-   */
-  createDomain(contractAddress, chainId, name = "UnifiedID", version = "1") {
-    return SignatureUtils.createDomain(contractAddress, chainId, name, version);
-  }
-
-  /**
-   * Batch create signatures
-   * @param {Array} operations - Array of operations to sign
-   * @param {number} targetChainId - Target chain ID
-   * @param {number} deadline - Deadline
-   * @param {boolean} useLegacyTypes - Whether to use legacy types
-   * @returns {Promise<Array>} Array of signature data
-   */
-  async batchCreateSignatures(operations, targetChainId, deadline, useLegacyTypes = false) {
-    if (!this.sdk.signer) {
-      throw new Error('Signer is required for signature creation. Call setSigner() first.');
+    case 'updateUnifiedId': {
+      if (!params.oldUnifiedId || typeof params.oldUnifiedId !== 'string') {
+        throw new Error('Missing or invalid oldUnifiedId for updateUnifiedId operation');
+      }
+      if (!params.newUnifiedId || typeof params.newUnifiedId !== 'string') {
+        throw new Error('Missing or invalid newUnifiedId for updateUnifiedId operation');
+      }
+      if (params.nonce === undefined || params.nonce === null || isNaN(params.nonce)) {
+        throw new Error('Missing or invalid nonce for updateUnifiedId operation');
+      }
+      inner = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'string'],
+        [params.oldUnifiedId, params.newUnifiedId]
+      );
+      packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, params.nonce]);
+      break;
     }
+    default:
+      throw new Error('Unknown operation type for signature message');
+  }
+  const hash = ethers.utils.keccak256(packed);
+  return hash;
+};
 
-    const domain = SignatureUtils.createDomain(
-      this.config.contractAddresses.mother[targetChainId],
-      targetChainId
+
+/**
+ * Create options blob with nonce and deadline
+ * @param {string} nonce - Current nonce
+ * @param {number} deadlineOffset - Deadline offset in seconds (default: 1 hour)
+ * @returns {string} Options blob
+ */
+const createOptions = (nonce, deadlineOffset = 3600) => {
+  const deadline = Math.floor(Date.now() / 1000) + deadlineOffset;
+  
+  return ethers.utils.defaultAbiCoder.encode(
+    ['uint256', 'uint256'],
+    [nonce, deadline]
+  );
+};
+
+/**
+ * Register a new unified ID
+ * @param {Object} params - Registration parameters
+ * @param {string} params.unifiedId - Unified ID to register
+ * @param {string} params.userAddress - User's wallet address
+ * @param {string|number} params.nonce - Nonce
+ * @param {string} params.signature - User's signature (already signed)
+ * @param {Object} params.config - SDK configuration
+ * @returns {Promise<Object>} Registration result
+ */
+const registerUnifiedId = async ({ unifiedId, userAddress, nonce, signature, config}) => {
+  try {
+    if (!signature) throw new Error('Missing required signature for registration');
+   
+    // Create options
+    const options = createOptions(nonce);
+    // Prepare request payload
+    const payload = {
+      chainId: config.chainId,
+      unifiedId: unifiedId,
+      userAddress: userAddress,
+      nonce: nonce.toString(),
+      action: 'initiate-register-unifiedid',
+      masterSignature: signature,
+      primarySignature: signature,
+      options: options
+    };
+    // Send HTTP request
+    const httpClient = createHttpClient(config);
+    const response = await httpClient.post('/set-unifiedid', payload);
+    return {
+      success: true,
+      data: response.data,
+      payload: payload
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data || null
+    };
+  }
+};
+
+/**
+ * Add secondary address to existing unified ID
+ * @param {Object} params - Secondary address parameters
+ * @param {string} params.unifiedId - Unified ID
+ * @param {string} params.secondaryAddress - Secondary address to add
+ * @param {string|number} params.nonce - Nonce
+ * @param {string} params.primarySignature - Signature from primary wallet
+ * @param {string} params.secondarySignature - Signature from secondary wallet
+ * @param {Object} params.config - SDK configuration
+ * @returns {Promise<Object>} Result
+ */
+const addSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, primarySignature, secondarySignature, config  }) => {
+  try {
+    if (!primarySignature || !secondarySignature) throw new Error('Missing required signatures for addSecondaryAddress');
+  
+    // Create options
+    const options = createOptions(nonce);
+    // Prepare request payload
+    const payload = {
+      action: 'initiate-add-secondary-address',
+      unifiedId: unifiedId,
+      secondaryAddress: secondaryAddress,
+      nonce: nonce.toString(),
+      primarySignature: primarySignature,
+      secondarySignature: secondarySignature,
+      chainId: config.chainId,
+      options: options
+    };
+    // Send HTTP request
+    const httpClient = createHttpClient(config);
+    const response = await httpClient.post('/add-secondary-address', payload);
+    return {
+      success: true,
+      data: response.data,
+      payload: payload
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data || null
+    };
+  }
+};
+
+/**
+ * Change primary address for existing unified ID
+ * @param {Object} params - Primary address change parameters
+ * @param {string} params.unifiedId - Unified ID
+ * @param {string} params.newAddress - New primary address
+ * @param {string|number} params.nonce - Nonce
+ * @param {string} params.currentPrimarySignature - Signature from current primary wallet
+ * @param {string} params.newPrimarySignature - Signature from new primary wallet
+ * @param {Object} params.config - SDK configuration
+ * @returns {Promise<Object>} Result
+ */
+const changePrimaryAddress = async ({ unifiedId, newAddress, nonce, currentPrimarySignature, newPrimarySignature, config}) => {
+  try {
+    if (!currentPrimarySignature || !newPrimarySignature) throw new Error('Missing required signatures for changePrimaryAddress');
+    // Create options with deadline
+    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour deadline
+    const options = ethers.utils.defaultAbiCoder.encode(
+      ['uint256', 'uint256'],
+      [nonce, deadline]
     );
+    // Prepare request payload
+    const payload = {
+      chainId: config.chainId,
+      unifiedId: unifiedId,
+      newPrimaryAddress: newAddress,
+      nonce: nonce.toString(),
+      deadline: deadline,
+      currentPrimarySignature: currentPrimarySignature,
+      newPrimarySignature: newPrimarySignature,
+      options: options
+    };
+    // Send HTTP request
+    const httpClient = createHttpClient(config);
+    const response = await httpClient.post('/update-primary-address', payload);
+    return {
+      success: true,
+      data: response.data,
+      payload: payload
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data || null
+    };
+  }
+};
 
-    return SignatureUtils.batchCreateSignatures(
-      this.sdk.signer,
-      domain,
-      operations,
-      targetChainId,
-      deadline,
-      useLegacyTypes
+/**
+ * Remove secondary address from existing unified ID
+ * @param {Object} params - Remove secondary address parameters
+ * @param {string} params.unifiedId - Unified ID
+ * @param {string} params.secondaryAddress - Secondary address to remove
+ * @param {string|number} params.nonce - Nonce
+ * @param {string} params.signature - Signature from primary wallet
+ * @param {Object} params.config - SDK configuration
+ * @returns {Promise<Object>} Result
+ */
+const removeSecondaryAddress = async ({ unifiedId, secondaryAddress, nonce, signature, config  }) => {
+  try {
+    if (!signature) throw new Error('Missing required signature for removeSecondaryAddress');
+  
+    // Create options with deadline
+    const options = createOptions(nonce);
+    // Prepare request payload
+    const payload = {
+      action: 'initiate-remove-secondary-address',
+      chainId: config.chainId,
+      unifiedId: unifiedId,
+      secondaryAddress: secondaryAddress,
+      nonce: nonce.toString(),
+      signature: signature,
+      options: options
+    };
+    // Send HTTP request
+    const httpClient = createHttpClient(config);
+    const response = await httpClient.post('/remove-secondary-address', payload);
+    return {
+      success: true,
+      data: response.data,
+      payload: payload
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data || null
+    };
+  }
+};
+
+/**
+ * Update unified ID (change from old ID to new ID)
+ * @param {Object} params - Update unified ID parameters
+ * @param {string} params.oldUnifiedId - Old unified ID
+ * @param {string} params.newUnifiedId - New unified ID
+ * @param {string|number} params.nonce - Nonce
+ * @param {string} params.signature - Signature from master wallet
+ * @param {Object} params.config - SDK configuration
+ * @returns {Promise<Object>} Result
+ */
+const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, config }) => {
+  try {
+    if (!signature) throw new Error('Missing required signature for updateUnifiedId');
+    
+    // Create options with deadline
+    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour deadline
+    const options = ethers.utils.defaultAbiCoder.encode(
+      ['uint256', 'uint256'],
+      [nonce, deadline]
     );
+    // Prepare request payload
+    const payload = {
+      action: 'initiate-update-unifiedid',
+      previousUnifiedId: oldUnifiedId,
+      newUnifiedId: newUnifiedId,
+      nonce: nonce.toString(),
+      deadline: deadline,
+      signature: signature,
+      options: options
+    };
+    // Send HTTP request
+    const httpClient = createHttpClient(config);
+    const response = await httpClient.post('/update-unifiedid', payload);
+    return {
+      success: true,
+      data: response.data,
+      payload: payload
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data || null
+    };
   }
+};
 
-  // ========================================
-  // EXPOSE MODULES
-  // ========================================
 
-  /**
-   * Get operations module
-   * @returns {UnifiedIdOperations} Operations module
-   */
-  getOperations() {
-    return this.operations;
+function validateConfig(config) {
+  if (!config) throw new Error('Config object is required');
+  if (!config.baseURL || typeof config.baseURL !== 'string') throw new Error('Missing or invalid baseURL in config');
+  if (!config.authToken || typeof config.authToken !== 'string') throw new Error('Missing or invalid authToken in config');
+  if (!config.chainId || isNaN(config.chainId)) throw new Error('Missing or invalid chainId in config');
+  if (!config.environment || (config.environment !== 'testnet' && config.environment !== 'mainnet')) {
+    throw new Error("'environment' must be either 'testnet' or 'mainnet'");
   }
-
-  /**
-   * Get resolvers module
-   * @returns {UnifiedIdResolvers} Resolvers module
-   */
-  getResolvers() {
-    return this.resolvers;
+  const chainIdNum = Number(config.chainId);
+  if (!CHAIN_ID_MAP[config.environment].includes(chainIdNum)) {
+    throw new Error(`Chain ID ${chainIdNum} is not allowed for environment '${config.environment}'. Allowed: [${CHAIN_ID_MAP[config.environment].join(', ')}]`);
   }
-
-  /**
-   * Get signature utilities
-   * @returns {Object} Signature utilities
-   */
-  getSignatureUtils() {
-    return SignatureUtils;
+  // Check contract address exists for this environment/chainId
+  if (!CONTRACT_ADDRESS_MAP[config.environment][chainIdNum]) {
+    throw new Error(`No contract address configured for environment '${config.environment}' and chainId ${chainIdNum}`);
   }
 }
 
-// ========================================
-// EXPORTS
-// ========================================
+function getMotherContractAddress(config) {
+  const chainIdNum = Number(config.chainId);
+  return CONTRACT_ADDRESS_MAP[config.environment][chainIdNum];
+}
+
+class UnifiedIdSDK {
+  constructor(config) {
+    validateConfig(config);
+    this.config = { ...config };
+  }
+
+  async registerUnifiedId({ unifiedId, userAddress, nonce, signature }) {
+    return await registerUnifiedId({
+      unifiedId,
+      userAddress,
+      nonce,
+      signature,
+      config: this.config
+    });
+  }
+
+  async addSecondaryAddress({ unifiedId, secondaryAddress, nonce, primarySignature, secondarySignature }) {
+    return await addSecondaryAddress({
+      unifiedId,
+      secondaryAddress,
+      nonce,
+      primarySignature,
+      secondarySignature,
+      config: this.config
+    });
+  }
+
+  async removeSecondaryAddress({ unifiedId, secondaryAddress, nonce, signature }) {
+    return await removeSecondaryAddress({
+      unifiedId,
+      secondaryAddress,
+      nonce,
+      signature,
+      config: this.config
+    });
+  }
+
+  async changePrimaryAddress({ unifiedId, newAddress, nonce, currentPrimarySignature, newPrimarySignature }) {
+    return await changePrimaryAddress({
+      unifiedId,
+      newAddress,
+      nonce,
+      currentPrimarySignature,
+      newPrimarySignature,
+      config: this.config
+    });
+  }
+
+  async updateUnifiedId({ oldUnifiedId, newUnifiedId, nonce, signature }) {
+    return await updateUnifiedId({
+      oldUnifiedId,
+      newUnifiedId,
+      nonce,
+      signature,
+      config: this.config
+    });
+  }
+
+}
 
 module.exports = {
-  // Main SDK class
-  UnifiedID,
-  
-  // Core SDK
   UnifiedIdSDK,
-  
-  // Modules
-  UnifiedIdOperations,
-  UnifiedIdResolvers,
-  
-  // Utilities
-  SignatureUtils,
-  
-  // Constants
-  SUPPORTED_CHAINS,
-  DEFAULT_CONFIG,
-  
-  // Default export
-  default: UnifiedID
-}; 
+  createSignatureMessage,
+  getProvider,
+  getNonce,
+  createOptions
+};

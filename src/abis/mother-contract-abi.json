@@ -1,0 +1,4 @@
+[
+  "function nonces(string) view returns (uint256)",
+  "function getNonce(string) view returns (uint256)"
+] 
