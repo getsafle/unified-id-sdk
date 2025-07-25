@@ -17,15 +17,10 @@ npm install unified-id-sdk
 
 ## Quick Integration Checklist
 
-1. **Install ethers.js** (if not already):
-   ```bash
-   npm install ethers
-   ```
-2. **Create wallets using ethers.Wallet** (not via SDK)
-3. **Initialize the SDK with config** (see below)
-4. **Use SDK utility functions for nonce and signature message**
-5. **Sign messages with your wallet**
-6. **Call the SDK class methods for API actions**
+1. **Initialize the SDK with config** (see below)
+2. **Use SDK utility functions for nonce and signature hash**
+3. **Sign the hash with your wallet or signing method**
+4. **Call the SDK class methods for API actions**
 
 ---
 
@@ -37,7 +32,7 @@ You **must** provide all config values explicitly. There are no defaults or envi
 const UnifiedIdSDK = require('unified-id-sdk');
 
 const config = {
-  baseURL: 'https://api.unifiedid.com',           // API base URL (required)
+  baseURL: 'safle_api_base_url',           // API base URL (required)
   authToken: 'your-bearer-token-here',           // Auth token (required)
   chainId: 11155111,                             // Blockchain chain ID (required, e.g. Sepolia)
   environment: 'testnet'                         // 'testnet' or 'mainnet' (required)
@@ -58,115 +53,133 @@ If any config value is missing or invalid, the SDK will throw an error.
 
 ## Usage Examples
 
+**Note:** For all flows, you must sign the hash returned by `createSignatureMessage` using your preferred wallet or signing method (e.g., MetaMask, ethers.js, hardware wallet, etc.).
+
 ### 1. Register a New Unified ID
 
+**Step 1: Generate the signature hash**
 ```javascript
-const { ethers } = require('ethers');
 const { getNonce, createSignatureMessage } = require('unified-id-sdk');
-
-const wallet = new ethers.Wallet('0xYOUR_PRIVATE_KEY', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
-const userAddress = wallet.address;
 const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('register', {
   unifiedId: 'my-unified-id',
-  userAddress,
+  userAddress: '0xUSER_ADDRESS',
   nonce: Number(nonce)
 });
-const signature = await wallet.signMessage(ethers.utils.arrayify(hash));
+```
+**Step 2: Sign the hash**
+- Dapp/user must sign the hash using their wallet (not shown here).
+- Pass the resulting signature to the SDK method below.
 
+**Step 3: Call the SDK method**
+```javascript
 const result = await sdk.registerUnifiedId({
   unifiedId: 'my-unified-id',
-  userAddress,
+  userAddress: '0xUSER_ADDRESS',
   nonce: Number(nonce),
-  signature
+  signature // <- the signature from the user
 });
 ```
 
 ### 2. Add a Secondary Address
 
+**Step 1: Generate the signature hash**
 ```javascript
-const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
-const secondaryWallet = new ethers.Wallet('0xSECONDARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
-const secondaryAddress = secondaryWallet.address;
 const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('register', {
   unifiedId: 'my-unified-id',
-  userAddress: secondaryAddress,
+  userAddress: '0xSECONDARY_ADDRESS',
   nonce: Number(nonce)
 });
-const primarySignature = await primaryWallet.signMessage(ethers.utils.arrayify(hash));
-const secondarySignature = await secondaryWallet.signMessage(ethers.utils.arrayify(hash));
+```
+**Step 2: Sign the hash**
+- Both the primary and secondary wallets must sign the hash.
+- Pass both signatures to the SDK method below.
 
+**Step 3: Call the SDK method**
+```javascript
 const result = await sdk.addSecondaryAddress({
   unifiedId: 'my-unified-id',
-  secondaryAddress,
+  secondaryAddress: '0xSECONDARY_ADDRESS',
   nonce: Number(nonce),
-  primarySignature,
-  secondarySignature
+  primarySignature,   // <- signature from primary wallet
+  secondarySignature  // <- signature from secondary wallet
 });
 ```
 
 ### 3. Remove a Secondary Address
 
+**Step 1: Generate the signature hash**
 ```javascript
-const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
 const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('removeSecondary', {
   unifiedId: 'my-unified-id',
   secondaryAddress: '0xSECONDARY_ADDRESS',
   nonce: Number(nonce)
 });
-const signature = await primaryWallet.signMessage(ethers.utils.arrayify(hash));
+```
+**Step 2: Sign the hash**
+- The primary wallet must sign the hash.
+- Pass the signature to the SDK method below.
 
+**Step 3: Call the SDK method**
+```javascript
 const result = await sdk.removeSecondaryAddress({
   unifiedId: 'my-unified-id',
   secondaryAddress: '0xSECONDARY_ADDRESS',
   nonce: Number(nonce),
-  signature
+  signature // <- signature from primary wallet
 });
 ```
 
 ### 4. Update Unified ID
 
+**Step 1: Generate the signature hash**
 ```javascript
-const primaryWallet = new ethers.Wallet('0xPRIMARY_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
 const nonce = await getNonce('old-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('updateUnifiedId', {
   oldUnifiedId: 'old-unified-id',
   newUnifiedId: 'new-unified-id',
   nonce: Number(nonce)
 });
-const signature = await primaryWallet.signMessage(ethers.utils.arrayify(hash));
+```
+**Step 2: Sign the hash**
+- The primary wallet must sign the hash.
+- Pass the signature to the SDK method below.
 
+**Step 3: Call the SDK method**
+```javascript
 const result = await sdk.updateUnifiedId({
   oldUnifiedId: 'old-unified-id',
   newUnifiedId: 'new-unified-id',
   nonce: Number(nonce),
-  signature
+  signature // <- signature from primary wallet
 });
 ```
 
 ### 5. Change Primary Address
 
+**Step 1: Generate the signature hash**
 ```javascript
-const currentWallet = new ethers.Wallet('0xCURRENT_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
-const newWallet = new ethers.Wallet('0xNEW_PK', new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_PROJECT_ID'));
-const newAddress = newWallet.address;
 const nonce = await getNonce('my-unified-id', config, 'https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
 const hash = createSignatureMessage('primaryChange', {
   unifiedId: 'my-unified-id',
-  newAddress,
+  newAddress: '0xNEW_PRIMARY_ADDRESS',
   nonce: Number(nonce)
 });
-const currentPrimarySignature = await currentWallet.signMessage(ethers.utils.arrayify(hash));
-const newPrimarySignature = await newWallet.signMessage(ethers.utils.arrayify(hash));
+```
+**Step 2: Sign the hash**
+- Both the current and new primary wallets must sign the hash.
+- Pass both signatures to the SDK method below.
 
+**Step 3: Call the SDK method**
+```javascript
 const result = await sdk.changePrimaryAddress({
   unifiedId: 'my-unified-id',
-  newAddress,
+  newAddress: '0xNEW_PRIMARY_ADDRESS',
   nonce: Number(nonce),
-  currentPrimarySignature,
-  newPrimarySignature
+  currentPrimarySignature, // <- signature from current primary wallet
+  newPrimarySignature     // <- signature from new primary wallet
 });
 ```
 

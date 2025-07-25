@@ -1,8 +1,10 @@
 // Example usage of UnifiedIdSDK
 //
-// 1. Fill in your config and private keys below (replace all placeholder values)
-// 2. By default, only the registration flow is enabled. Uncomment other flows to test them.
-// 3. Run this file with: node examples/example.js
+// INSTRUCTIONS:
+// 1. Fill in your config and private keys below (replace all placeholder values).
+// 2. This script will run all major API flows in sequence: registration, add secondary, remove secondary, update unified ID, and change primary address.
+// 3. To test a specific API, comment out the other blocks as needed.
+// 4. Run this file with: node tests/tests.js
 //
 // ⚠️ Never commit real private keys or tokens to version control!
 
@@ -43,8 +45,7 @@ async function quickRealTest() {
   const sdk = new UnifiedIdSDK(config);
 
   try {
-    // --- 1. Registration (default enabled) ---
-    // This block registers a new unified ID. Fill in your private key and unifiedId above.
+    // --- 1. Registration ---
     console.log('1. Testing Registration...');
     const wallet = new ethers.Wallet(testKeys.primaryPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
     const userAddress = wallet.address;
@@ -71,8 +72,6 @@ async function quickRealTest() {
     console.log('\n' + '='.repeat(50) + '\n');
 
     // --- 2. Add Secondary Address ---
-    // Uncomment to test adding a secondary address
-    /*
     console.log('2. Testing Add Secondary Address...');
     const primaryWallet2 = new ethers.Wallet(testKeys.primaryPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
     const secondaryWallet = new ethers.Wallet(testKeys.secondaryPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
@@ -100,11 +99,8 @@ async function quickRealTest() {
       console.log('Details:', addResult.details);
     }
     console.log('\n' + '='.repeat(50) + '\n');
-    */
 
     // --- 3. Remove Secondary Address ---
-    // Uncomment to test removing a secondary address
-    /*
     console.log('3. Testing Remove Secondary Address...');
     const primaryWallet3 = new ethers.Wallet(testKeys.primaryPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
     const nonce3 = await getNonce(testKeys.unifiedId, config, testKeys.rpcUrl);
@@ -128,11 +124,8 @@ async function quickRealTest() {
       console.log('Details:', removeResult.details);
     }
     console.log('\n' + '='.repeat(50) + '\n');
-    */
 
     // --- 4. Update Unified ID ---
-    // Uncomment to test updating a unified ID
-    /*
     console.log('4. Testing Update Unified ID...');
     const primaryWallet4 = new ethers.Wallet(testKeys.primaryPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
     const nonce4 = await getNonce(testKeys.unifiedId, config, testKeys.rpcUrl);
@@ -156,11 +149,8 @@ async function quickRealTest() {
       console.log('Details:', updateResult.details);
     }
     console.log('\n' + '='.repeat(50) + '\n');
-    */
 
     // --- 5. Change Primary Address ---
-    // Uncomment to test changing the primary address
-    /*
     console.log('5. Testing Change Primary Address...');
     const currentWallet = new ethers.Wallet(testKeys.currentPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
     const newWallet = new ethers.Wallet(testKeys.newPk, new ethers.providers.JsonRpcProvider(testKeys.rpcUrl));
@@ -188,7 +178,6 @@ async function quickRealTest() {
       console.log('Details:', changeResult.details);
     }
     console.log('\n' + '='.repeat(50) + '\n');
-    */
 
     // Summary
     console.log('🎉 Real API Test Completed!');
