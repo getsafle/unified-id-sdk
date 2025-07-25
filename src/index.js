@@ -165,97 +165,7 @@ const createSignatureMessage = (operation, params) => {
   return hash;
 };
 
-/**
- * Create signature for unified ID registration
- * @param {string} unifiedId - Unified ID
- * @param {string} userAddress - User's wallet address
- * @param {string} nonce - Current nonce
- * @param {Object} wallet - Ethers wallet instance
- * @returns {Promise<string>} Signature
- */
-const createSignature = async (unifiedId, userAddress, nonce, wallet) => {
-  // Build packed data exactly like Solidity
-  const inner = ethers.utils.defaultAbiCoder.encode(
-    ['string', 'address'],
-    [unifiedId, userAddress] 
-  );
-  
-  const packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, nonce]);
-  const hash = ethers.utils.keccak256(packed);
-  
-  // Sign the hash (EIP-191 style)
-  const signature = await wallet.signMessage(ethers.utils.arrayify(hash));
-  return signature;
-};
 
-/**
- * Create signature for primary address change
- * @param {string} unifiedId - Unified ID
- * @param {string} newAddress - New primary address
- * @param {string} nonce - Current nonce
- * @param {Object} wallet - Ethers wallet instance
- * @returns {Promise<string>} Signature
- */
-const createPrimaryChangeSignature = async (unifiedId, newAddress, nonce, wallet) => {
-  // Build packed data exactly like Solidity: keccak256( abi.encodePacked( abi.encode(id, newAddr), nonce ) )
-  const inner = ethers.utils.defaultAbiCoder.encode(
-    ['string', 'address'],
-    [unifiedId, newAddress]
-  );
-  
-  const packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, nonce]);
-  const hash = ethers.utils.keccak256(packed);
-  
-  // Sign the hash (EIP-191 style)
-  const signature = await wallet.signMessage(ethers.utils.arrayify(hash));
-  return signature;
-};
-
-/**
- * Create signature for removing secondary address
- * @param {string} unifiedId - Unified ID
- * @param {string} secondaryAddress - Secondary address to remove
- * @param {string} nonce - Current nonce
- * @param {Object} wallet - Ethers wallet instance
- * @returns {Promise<string>} Signature
- */
-const createRemoveSecondarySignature = async (unifiedId, secondaryAddress, nonce, wallet) => {
-  // Build packed data exactly like Solidity: abi.encodePacked( abi.encode(id, secAddr), nonce )
-  const inner = ethers.utils.defaultAbiCoder.encode(
-    ['string', 'address'],
-    [unifiedId, secondaryAddress]
-  );
-  
-  const packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, nonce]);
-  const hash = ethers.utils.keccak256(packed);
-  
-  // Sign the hash (EIP-191 style)
-  const signature = await wallet.signMessage(ethers.utils.arrayify(hash));
-  return signature;
-};
-
-/**
- * Create signature for updating unified ID
- * @param {string} oldUnifiedId - Old unified ID
- * @param {string} newUnifiedId - New unified ID
- * @param {string} nonce - Current nonce
- * @param {Object} wallet - Ethers wallet instance
- * @returns {Promise<string>} Signature
- */
-const createUpdateUnifiedIdSignature = async (oldUnifiedId, newUnifiedId, nonce, wallet) => {
-  // Build packed data exactly like Solidity: abi.encodePacked( abi.encode(oldId, newId), nonce )
-  const inner = ethers.utils.defaultAbiCoder.encode(
-    ['string', 'string'],
-    [oldUnifiedId, newUnifiedId]
-  );
-  
-  const packed = ethers.utils.solidityPack(['bytes', 'uint256'], [inner, nonce]);
-  const hash = ethers.utils.keccak256(packed);
-  
-  // Sign the hash (EIP-191 style)
-  const signature = await wallet.signMessage(ethers.utils.arrayify(hash));
-  return signature;
-};
 
 /**
  * Create options blob with nonce and deadline
@@ -525,16 +435,14 @@ const updateUnifiedId = async ({ oldUnifiedId, newUnifiedId, nonce, signature, c
 // Supported chain IDs for each environment
 const CHAIN_ID_MAP = {
   mainnet: [
-    1,         // Ethereum Mainnet
-    137,       // Polygon Mainnet
-    56,        // BSC Mainnet
+   // 1,         // Ethereum Mainnet
     // Add more mainnet chain IDs as needed
   ],
   testnet: [
     11155111,  // Ethereum Sepolia
-    5,         // Ethereum Goerli
-    80001,     // Polygon Mumbai
-    97,        // BSC Testnet
+    // 5,         // Ethereum Goerli
+    // 80001,     // Polygon Mumbai
+    // 97,        // BSC Testnet
     // Add more testnet chain IDs as needed
   ]
 };
