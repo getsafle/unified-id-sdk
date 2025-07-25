@@ -33,3 +33,8 @@
 
 ### Summary
 - Removed build step from package file
+
+## [1.0.1] - 2025-07-25
+
+### Summary
+- Updated main branch pipeline
