@@ -199,7 +199,6 @@ const isSecondaryAddressAlreadyRegistered = async (addressToCheck, contractAddre
   
   try {
     const result = await resolveAnyAddressToUnifiedId(addressToCheck, contractAddress, rpcUrl);
-    console.log(result, "inside the util");
     return result.isSecondary;
   } catch (error) {
     // If the address is not found, it's not registered as secondary
@@ -288,7 +287,6 @@ const getSecondaryWalletsforUnifiedID = async (unifiedId, contractAddress, rpcUr
   try {
     const childContract = getChildContract(contractAddress, rpcUrl);
     const secondaryAddresses = await childContract.getSecondaryAddresses(unifiedId);
-    console.log(secondaryAddresses, "inside the util");
     
     return secondaryAddresses;
   } catch (error) {
