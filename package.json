@@ -1,6 +1,6 @@
 {
-  "name": "unified-id-sdk",
-  "version": "1.0.2",
+  "name": "@getsafle/unified-id-sdk",
+  "version": "1.0.3",
   "description": "JavaScript SDK for Unified ID registration and management",
   "main": "src/index.js",
   "scripts": {
@@ -24,7 +24,8 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "UTILITY_FUNCTIONS.md"
   ],
   "repository": {
     "type": "git",
