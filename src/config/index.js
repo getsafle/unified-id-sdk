@@ -14,7 +14,7 @@ const CHAIN_ID_MAP = {
 };
 
 // Map of environment -> chainId -> contract address
-const CONTRACT_ADDRESS_MAP = {
+const MOTHER_CONTRACT_ADDRESS_MAP = {
   mainnet: {
     // 1: '0x...',      // Ethereum Mainnet
     // 137: '0x...',    // Polygon Mainnet
@@ -28,7 +28,36 @@ const CONTRACT_ADDRESS_MAP = {
   }
 };
 
+// Map of environment -> chainId -> child contract address
+const CHILD_CONTRACT_ADDRESS_MAP = {
+  mainnet: {
+    // 1: '0x...',      // Ethereum Mainnet
+    // 137: '0x...',    // Polygon Mainnet
+  },
+  testnet: {
+    11155111: '0x5f5DAD00aDa66c5bAEE539f4C6DA8975e21bC5c9',
+    // 5: '0x...',      // Goerli
+    // 80001: '0x...',  // Polygon Mumbai
+    // 97: '0x...',     // BSC Testnet
+  }
+};
+
+
+const STORAGE_UTIL_CONTRACT_ADDRESS_MAP = {
+  mainnet: {
+    // 1: '0x...',      // Ethereum Mainnet
+    // 137: '0x...',    // Polygon Mainnet
+  },
+  testnet: {
+    11155111: '0x49CEfBBbCEDEc40928b38faBa2C92554dA0296d2', // Sepolia example
+    // 5: '0x...',      // Goerli
+    // 80001: '0x...',  // Polygon Mumbai
+    // 97: '0x...',     // BSC Testnet
+  }
+};
 module.exports = {
   CHAIN_ID_MAP,
-  CONTRACT_ADDRESS_MAP,
+  MOTHER_CONTRACT_ADDRESS_MAP,
+  CHILD_CONTRACT_ADDRESS_MAP,
+  STORAGE_UTIL_CONTRACT_ADDRESS_MAP
 }; 

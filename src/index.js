@@ -1,7 +1,8 @@
 const { ethers } = require('ethers');
 const axios = require('axios');
 const MOTHER_CONTRACT_ABI = require('./abis/mother-contract-abi.json');
-const { CHAIN_ID_MAP, CONTRACT_ADDRESS_MAP } = require('./config');
+const { CHAIN_ID_MAP, MOTHER_CONTRACT_ADDRESS_MAP } = require('./config');
+const utils = require('./utils');
 
 /**
  * Create HTTP client with configuration
@@ -39,7 +40,9 @@ const getProvider = (rpcUrl) => {
 const getNonce = async (unifiedId, config, rpcUrl) => {
   const motherContractAddress = getMotherContractAddress(config);
   const provider = getProvider(rpcUrl);
-  const mother = new ethers.Contract(motherContractAddress, MOTHER_CONTRACT_ABI, provider);
+  // Handle Hardhat artifact format
+  const abi = MOTHER_CONTRACT_ABI.abi || MOTHER_CONTRACT_ABI;
+  const mother = new ethers.Contract(motherContractAddress, abi, provider);
   try {
     const nonce = await mother.nonces(unifiedId);
     return nonce.toString();
@@ -396,14 +399,14 @@ function validateConfig(config) {
     throw new Error(`Chain ID ${chainIdNum} is not allowed for environment '${config.environment}'. Allowed: [${CHAIN_ID_MAP[config.environment].join(', ')}]`);
   }
   // Check contract address exists for this environment/chainId
-  if (!CONTRACT_ADDRESS_MAP[config.environment][chainIdNum]) {
+  if (!MOTHER_CONTRACT_ADDRESS_MAP[config.environment][chainIdNum]) {
     throw new Error(`No contract address configured for environment '${config.environment}' and chainId ${chainIdNum}`);
   }
 }
 
 function getMotherContractAddress(config) {
   const chainIdNum = Number(config.chainId);
-  return CONTRACT_ADDRESS_MAP[config.environment][chainIdNum];
+  return MOTHER_CONTRACT_ADDRESS_MAP[config.environment][chainIdNum];
 }
 
 class UnifiedIdSDK {
@@ -462,6 +465,57 @@ class UnifiedIdSDK {
       signature,
       config: this.config
     });
+  }
+
+  // Utility methods for contract interactions
+  async isValidUnifiedID(unifiedId, rpcUrl) {
+    const contractAddress = utils.getStorageUtilContractAddress(this.config);
+    return await utils.isValidUnifiedID(unifiedId, contractAddress, rpcUrl);
+  }
+
+  async isPrimaryAddressAlreadyRegistered(addressToCheck, rpcUrl) {
+    const contractAddress = utils.getChildContractAddress(this.config);
+    return await utils.isPrimaryAddressAlreadyRegistered(addressToCheck, contractAddress, rpcUrl);
+  }
+
+  async isSecondaryAddressAlreadyRegistered(addressToCheck, rpcUrl) {
+    const contractAddress = utils.getChildContractAddress(this.config);
+    return await utils.isSecondaryAddressAlreadyRegistered(addressToCheck, contractAddress, rpcUrl);
+  }
+
+  async isUnifiedIDAlreadyRegistered(unifiedId, rpcUrl) {
+    const contractAddress = utils.getMotherContractAddress(this.config);
+    return await utils.isUnifiedIDAlreadyRegistered(unifiedId, contractAddress, rpcUrl);
+  }
+
+  async getMasterWalletforUnifiedID(unifiedId, rpcUrl) {
+    const contractAddress = utils.getMotherContractAddress(this.config);
+    return await utils.getMasterWalletforUnifiedID(unifiedId, contractAddress, rpcUrl);
+  }
+
+  async getPrimaryWalletforUnifiedID(unifiedId, rpcUrl) {
+    const contractAddress = utils.getChildContractAddress(this.config);
+    return await utils.getPrimaryWalletforUnifiedID(unifiedId, contractAddress, rpcUrl);
+  }
+
+  async getSecondaryWalletsforUnifiedID(unifiedId, rpcUrl) {
+    const contractAddress = utils.getChildContractAddress(this.config);
+    return await utils.getSecondaryWalletsforUnifiedID(unifiedId, contractAddress, rpcUrl);
+  }
+
+  async getUnifiedIDByPrimaryAddress(primaryAddr, chainId, rpcUrl) {
+    const contractAddress = utils.getMotherContractAddress(this.config);
+    return await utils.getUnifiedIDByPrimaryAddress(primaryAddr, chainId, contractAddress, rpcUrl);
+  }
+
+  async getRegistrationFees(token, registrarFees, rpcUrl) {
+    const contractAddress = utils.getStorageUtilContractAddress(this.config);
+    return await utils.getRegistrationFees(token, registrarFees, contractAddress, rpcUrl);
+  }
+
+  async validateSignature(data, expectedSigner, signature, rpcUrl) {
+    const contractAddress = utils.getStorageUtilContractAddress(this.config);
+    return await utils.validateSignature(data, expectedSigner, signature, contractAddress, rpcUrl);
   }
 
 }

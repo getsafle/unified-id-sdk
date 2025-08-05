@@ -8,6 +8,7 @@ A functional JavaScript SDK for Unified ID registration and management.
 - 🔗 **Secondary Address Management**: Add and remove secondary addresses
 - ⚡ **Class-based Design**: Easy-to-use UnifiedIdSDK class
 - 🔒 **Security**: EIP-191 compliant signatures and secure nonce management
+- 🔍 **Comprehensive Utility Functions**: Check contract states, validate addresses, and verify data
 
 ## Installation
 
@@ -182,17 +183,136 @@ const result = await sdk.changePrimaryAddress({
 
 ---
 
-## Utility Functions and Named Exports
+## Utility Functions
 
-You can use the following utility functions directly:
+The SDK provides comprehensive utility functions for checking contract states, validating addresses, and verifying data. These functions can be used both as SDK instance methods and as direct exports.
+
+### Core Utility Functions
+
+You can use these functions directly:
 
 ```javascript
-const { getProvider, getNonce, createSignatureMessage, createOptions } = require('unified-id-sdk');
+const { 
+  getProvider, 
+  getNonce, 
+  createSignatureMessage, 
+  createOptions,
+  // Contract state utilities
+  isValidUnifiedID,
+  isPrimaryAddressAlreadyRegistered,
+  isSecondaryAddressAlreadyRegistered,
+  isUnifiedIDAlreadyRegistered,
+  getMasterWalletforUnifiedID,
+  getPrimaryWalletforUnifiedID,
+  getSecondaryWalletsforUnifiedID,
+  getUnifiedIDByPrimaryAddress,
+  getRegistrationFees,
+  validateSignature
+} = require('unified-id-sdk');
 ```
-- `getProvider(rpcUrl)`
-- `getNonce(unifiedId, config, rpcUrl)`
-- `createSignatureMessage(operation, params)`
-- `createOptions(nonce, deadlineOffset)`
+
+### SDK Instance Methods
+
+When using the SDK class, you can call utility functions as instance methods:
+
+```javascript
+const sdk = new UnifiedIdSDK(config);
+
+// Check if unified ID is valid
+const isValid = await sdk.isValidUnifiedID('example.id', rpcUrl);
+console.log('Is valid:', isValid);
+
+// Check if address is registered as primary
+const isPrimary = await sdk.isPrimaryAddressAlreadyRegistered('0xPRIMARY_ADDRESS', rpcUrl);
+console.log('Is primary:', isPrimary);
+
+// Check if address is registered as secondary
+const isSecondary = await sdk.isSecondaryAddressAlreadyRegistered('0xSECONDARY_ADDRESS',rpcUrl);
+console.log('Is secondary:', isSecondary);
+
+// Check if unified ID is already registered
+const isRegistered = await sdk.isUnifiedIDAlreadyRegistered('example.id', rpcUrl);
+console.log('Is registered:', isRegistered);
+
+// Get master wallet for unified ID
+const masterWallet = await sdk.getMasterWalletforUnifiedID('example.id', rpcUrl);
+console.log('Master wallet:', masterWallet);
+
+// Get primary wallet for unified ID
+const primaryWallet = await sdk.getPrimaryWalletforUnifiedID('example.id', rpcUrl);
+console.log('Primary wallet:', primaryWallet);
+
+// Get secondary wallets for unified ID
+const secondaryWallets = await sdk.getSecondaryWalletsforUnifiedID('example.id', rpcUrl);
+console.log('Secondary wallets:', secondaryWallets);
+
+// Get unified ID by primary address
+const unifiedId = await sdk.getUnifiedIDByPrimaryAddress('0xPRIMARY_ADDRESS', chainId, rpcUrl);
+console.log('Unified ID:', unifiedId);
+
+// Get registration fees for a token
+const fees = await sdk.getRegistrationFees('TOKEN_ADDRESS', '1000000000000000000', rpcUrl);
+console.log('Registration fees:', fees);
+
+// Validate signature
+const isValidSignature = await sdk.validateSignature(data, expectedSigner, signature, rpcUrl);
+console.log('Signature valid:', isValidSignature);
+```
+
+### Example Use Cases
+
+#### Pre-validation before registration
+```javascript
+// Check if unified ID already exists before attempting registration
+const isValid = await sdk.isValidUnifiedID(unifiedId, rpcUrl);
+const isRegistered = await sdk.isUnifiedIDAlreadyRegistered(unifiedId, rpcUrl);
+
+if (!isValid || isRegistered) {
+  console.log('Unified ID is invalid or already registered');
+  return;
+}
+
+// Proceed with registration
+```
+
+#### Address validation
+```javascript
+// Check if address is available before adding as secondary
+const isPrimary = await sdk.isPrimaryAddressAlreadyRegistered(address, rpcUrl);
+const isSecondary = await sdk.isSecondaryAddressAlreadyRegistered(address, rpcUrl);
+
+if (isPrimary || isSecondary) {
+  console.log('Address is already registered');
+  return;
+}
+
+// Proceed with adding secondary address
+```
+
+#### Wallet information retrieval
+```javascript
+// Get all wallet information for a unified ID
+const masterWallet = await sdk.getMasterWalletforUnifiedID(unifiedId, rpcUrl);
+const primaryWallet = await sdk.getPrimaryWalletforUnifiedID(unifiedId, rpcUrl);
+const secondaryWallets = await sdk.getSecondaryWalletsforUnifiedID(unifiedId, rpcUrl);
+
+console.log('Master wallet:', masterWallet);
+console.log('Primary wallet:', primaryWallet);
+console.log('Secondary wallets:', secondaryWallets);
+```
+
+#### Signature validation
+```javascript
+// Validate a signature for a specific operation
+const data = createSignatureMessage('register', {
+  unifiedId: 'example.id',
+  userAddress: 'USER_ADDRESS',
+  nonce: 1
+});
+
+const isValid = await sdk.validateSignature(data, expectedSigner, signature, rpcUrl);
+console.log('Signature valid:', isValid);
+```
 
 ---
 
@@ -208,6 +328,22 @@ if (!result.success) {
 }
 ```
 
+Utility functions throw descriptive errors when:
+- Required parameters are missing
+- Contract calls fail
+- Network issues occur
+- Invalid addresses are provided
+
+**Example error handling:**
+```javascript
+try {
+  const result = await sdk.isValidUnifiedID(unifiedId, rpcUrl);
+  console.log('Result:', result);
+} catch (error) {
+  console.error('Error checking unified ID:', error.message);
+}
+```
+
 ---
 
 ## Security Considerations
@@ -217,6 +353,7 @@ if (!result.success) {
 3. **Token Management**: Store authentication tokens securely
 4. **Nonce Management**: The SDK provides utilities for nonce retrieval
 5. **Signature Verification**: All signatures follow EIP-191 standards
+6. **Address Validation**: Always validate addresses before using them in operations
 
 ---
 
