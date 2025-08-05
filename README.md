@@ -223,11 +223,11 @@ const isValid = await sdk.isValidUnifiedID('example.id', rpcUrl);
 console.log('Is valid:', isValid);
 
 // Check if address is registered as primary
-const isPrimary = await sdk.isPrimaryAddressAlreadyRegistered('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', rpcUrl);
+const isPrimary = await sdk.isPrimaryAddressAlreadyRegistered('0xPRIMARY_ADDRESS', rpcUrl);
 console.log('Is primary:', isPrimary);
 
 // Check if address is registered as secondary
-const isSecondary = await sdk.isSecondaryAddressAlreadyRegistered('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', rpcUrl);
+const isSecondary = await sdk.isSecondaryAddressAlreadyRegistered('0xSECONDARY_ADDRESS',rpcUrl);
 console.log('Is secondary:', isSecondary);
 
 // Check if unified ID is already registered
@@ -247,109 +247,16 @@ const secondaryWallets = await sdk.getSecondaryWalletsforUnifiedID('example.id',
 console.log('Secondary wallets:', secondaryWallets);
 
 // Get unified ID by primary address
-const unifiedId = await sdk.getUnifiedIDByPrimaryAddress('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', chainId, rpcUrl);
+const unifiedId = await sdk.getUnifiedIDByPrimaryAddress('0xPRIMARY_ADDRESS', chainId, rpcUrl);
 console.log('Unified ID:', unifiedId);
 
 // Get registration fees for a token
-const fees = await sdk.getRegistrationFees('0x0000000000000000000000000000000000000000', '1000000000000000000', rpcUrl);
+const fees = await sdk.getRegistrationFees('TOKEN_ADDRESS', '1000000000000000000', rpcUrl);
 console.log('Registration fees:', fees);
 
 // Validate signature
 const isValidSignature = await sdk.validateSignature(data, expectedSigner, signature, rpcUrl);
 console.log('Signature valid:', isValidSignature);
-```
-
-### Direct Function Usage
-
-You can also use the utility functions directly without creating an SDK instance:
-
-```javascript
-const { 
-  isValidUnifiedID,
-  isPrimaryAddressAlreadyRegistered,
-  isSecondaryAddressAlreadyRegistered,
-  isUnifiedIDAlreadyRegistered,
-  getMasterWalletforUnifiedID,
-  getPrimaryWalletforUnifiedID,
-  getSecondaryWalletsforUnifiedID,
-  getUnifiedIDByPrimaryAddress,
-  getRegistrationFees,
-  validateSignature,
-  getChildContractAddress,
-  getMotherContractAddress,
-  getStorageUtilContractAddress
-} = require('unified-id-sdk');
-
-// Get contract addresses
-const childAddress = getChildContractAddress(config);
-const motherAddress = getMotherContractAddress(config);
-const storageUtilAddress = getStorageUtilContractAddress(config);
-
-// Direct function calls
-const isValid = await isValidUnifiedID('example.id', storageUtilAddress, rpcUrl);
-const isPrimary = await isPrimaryAddressAlreadyRegistered('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', childAddress, rpcUrl);
-const isSecondary = await isSecondaryAddressAlreadyRegistered('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', childAddress, rpcUrl);
-const isRegistered = await isUnifiedIDAlreadyRegistered('example.id', motherAddress, rpcUrl);
-const masterWallet = await getMasterWalletforUnifiedID('example.id', motherAddress, rpcUrl);
-const primaryWallet = await getPrimaryWalletforUnifiedID('example.id', childAddress, rpcUrl);
-const secondaryWallets = await getSecondaryWalletsforUnifiedID('example.id', childAddress, rpcUrl);
-const unifiedId = await getUnifiedIDByPrimaryAddress('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', chainId, motherAddress, rpcUrl);
-const fees = await getRegistrationFees('0x0000000000000000000000000000000000000000', '1000000000000000000', storageUtilAddress, rpcUrl);
-const isValidSignature = await validateSignature(data, expectedSigner, signature, storageUtilAddress, rpcUrl);
-```
-
-### Advanced Contract State Functions
-
-For more advanced contract interactions, the SDK also provides additional utility functions:
-
-```javascript
-const {
-  unifiedIdExistsOnMotherContract,
-  unifiedIdExistsOnChildContract,
-  isAddressAlreadyPresentOnChildContract,
-  isAddressAlreadyInUseOnChildContract,
-  resolveAnyAddressToUnifiedId,
-  validateChainDataExists,
-  isSecondaryAlreadyAddedOnMother,
-  isPrimaryAlreadyInUseOnMotherContract
-} = require('unified-id-sdk');
-
-// Check if unified ID exists on mother contract
-const motherResult = await unifiedIdExistsOnMotherContract('example.id', motherAddress, rpcUrl);
-console.log('Is valid on mother:', motherResult.isValid);
-console.log('Master address:', motherResult.masterAddress);
-
-// Check if unified ID exists on child contract
-const childExists = await unifiedIdExistsOnChildContract('example.id', childAddress, rpcUrl);
-console.log('Exists on child:', childExists);
-
-// Check if address is present on child contract
-const isPresent = await isAddressAlreadyPresentOnChildContract('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', childAddress, rpcUrl);
-console.log('Address present:', isPresent);
-
-// Check if address is in use for specific unified ID
-const isInUse = await isAddressAlreadyInUseOnChildContract('example.id', '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', childAddress, rpcUrl);
-console.log('Address in use:', isInUse);
-
-// Resolve any address to unified ID
-const addressResolution = await resolveAnyAddressToUnifiedId('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', childAddress, rpcUrl);
-console.log('Unified ID:', addressResolution.unifiedId);
-console.log('Is Primary:', addressResolution.isPrimary);
-console.log('Is Secondary:', addressResolution.isSecondary);
-
-// Validate chain data exists
-const chainData = await validateChainDataExists('example.id', chainId, motherAddress, rpcUrl);
-console.log('Chain data valid:', chainData.isValid);
-console.log('Primary address:', chainData.primary);
-console.log('Secondary addresses:', chainData.secondaries);
-
-// Check if secondary is already added on mother
-const isSecondaryAdded = await isSecondaryAlreadyAddedOnMother('example.id', chainId, '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', motherAddress, rpcUrl);
-console.log('Secondary already added:', isSecondaryAdded);
-
-// Check if primary is already in use on mother
-const isPrimaryInUse = await isPrimaryAlreadyInUseOnMotherContract(chainId, '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6', motherAddress, rpcUrl);
-console.log('Primary already in use:', isPrimaryInUse);
 ```
 
 ### Example Use Cases
@@ -399,15 +306,13 @@ console.log('Secondary wallets:', secondaryWallets);
 // Validate a signature for a specific operation
 const data = createSignatureMessage('register', {
   unifiedId: 'example.id',
-  userAddress: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+  userAddress: 'USER_ADDRESS',
   nonce: 1
 });
 
 const isValid = await sdk.validateSignature(data, expectedSigner, signature, rpcUrl);
 console.log('Signature valid:', isValid);
 ```
-
-For detailed documentation on all utility functions, see [UTILITY_FUNCTIONS.md](./UTILITY_FUNCTIONS.md).
 
 ---
 

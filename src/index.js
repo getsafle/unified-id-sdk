@@ -40,7 +40,9 @@ const getProvider = (rpcUrl) => {
 const getNonce = async (unifiedId, config, rpcUrl) => {
   const motherContractAddress = getMotherContractAddress(config);
   const provider = getProvider(rpcUrl);
-  const mother = new ethers.Contract(motherContractAddress, MOTHER_CONTRACT_ABI, provider);
+  // Handle Hardhat artifact format
+  const abi = MOTHER_CONTRACT_ABI.abi || MOTHER_CONTRACT_ABI;
+  const mother = new ethers.Contract(motherContractAddress, abi, provider);
   try {
     const nonce = await mother.nonces(unifiedId);
     return nonce.toString();
@@ -523,19 +525,5 @@ module.exports = {
   createSignatureMessage,
   getProvider,
   getNonce,
-  createOptions,
-  // Export utility functions for direct use
-  isPrimaryAddressAlreadyRegistered: utils.isPrimaryAddressAlreadyRegistered,
-  isSecondaryAddressAlreadyRegistered: utils.isSecondaryAddressAlreadyRegistered,
-  isUnifiedIDAlreadyRegistered: utils.isUnifiedIDAlreadyRegistered,
-  getMasterWalletforUnifiedID: utils.getMasterWalletforUnifiedID,
-  getPrimaryWalletforUnifiedID: utils.getPrimaryWalletforUnifiedID,
-  getSecondaryWalletsforUnifiedID: utils.getSecondaryWalletsforUnifiedID,
-  getUnifiedIDByPrimaryAddress: utils.getUnifiedIDByPrimaryAddress,
-  getRegistrationFees: utils.getRegistrationFees,
-  validateSignature: utils.validateSignature,
-  isValidUnifiedID: utils.isValidUnifiedID,
-  getChildContractAddress: utils.getChildContractAddress,
-  getMotherContractAddress: utils.getMotherContractAddress,
-  getStorageUtilContractAddress: utils.getStorageUtilContractAddress
+  createOptions
 };

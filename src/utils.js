@@ -52,89 +52,6 @@ const getStorageUtilContract = (contractAddress, rpcUrl) => {
   return new ethers.Contract(contractAddress, abi, provider);
 };
 
-/**
- * Check if unified ID exists on mother contract
- * @param {string} unifiedId - Unified ID to check
- * @param {string} contractAddress - Mother contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<Object>} Result with isValid flag and masterAddress
- */
-const unifiedIdExistsOnMotherContract = async (unifiedId, contractAddress, rpcUrl) => {
-  try {
-    const motherContract = getMotherContract(contractAddress, rpcUrl);
-    const masterAddress = await motherContract.getMasterAddress(unifiedId);
-    return {
-      isValid: masterAddress !== "0x0000000000000000000000000000000000000000",
-      masterAddress: masterAddress
-    };
-  } catch (error) {
-    throw new Error(`Failed to check unified ID on mother contract: ${error.message}`);
-  }
-};
-
-/**
- * Check if unified ID exists on child contract
- * @param {string} unifiedId - Unified ID to check
- * @param {string} contractAddress - Child contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<boolean>} True if unified ID exists
- */
-const unifiedIdExistsOnChildContract = async (unifiedId, contractAddress, rpcUrl) => {
-  try {
-    const childContract = getChildContract(contractAddress, rpcUrl);
-    const addresses = await childContract.resolveAllAddresses(unifiedId);
-    
-    if (addresses.primary !== "0x0000000000000000000000000000000000000000" || addresses.secondaries.length > 0) {
-      return true;
-    }
-    return false;
-  } catch (error) {
-    throw new Error(`Failed to check unified ID on child contract: ${error.message}`);
-  }
-};
-
-/**
- * Check if address is already present on child contract
- * @param {string} addressToCheck - Address to check
- * @param {string} contractAddress - Child contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<boolean>} True if address is present
- */
-const isAddressAlreadyPresentOnChildContract = async (addressToCheck, contractAddress, rpcUrl) => {
-  if (!addressToCheck) {
-    throw new Error("addressToCheck is required in isAddressAlreadyPresentOnChildContract");
-  }
-  
-  try {
-    const childContract = getChildContract(contractAddress, rpcUrl);
-    const unified = await childContract.resolveAddressToUnifiedId(addressToCheck);
-    return unified !== "";
-  } catch (error) {
-    throw new Error(`Failed to check address on child contract: ${error.message}`);
-  }
-};
-
-/**
- * Check if address is already in use on child contract for a specific unified ID
- * @param {string} unifiedId - Unified ID
- * @param {string} addressToCheck - Address to check
- * @param {string} contractAddress - Child contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<boolean>} True if address is in use
- */
-const isAddressAlreadyInUseOnChildContract = async (unifiedId, addressToCheck, contractAddress, rpcUrl) => {
-  if (!addressToCheck) {
-    throw new Error("addressToCheck is required in isAddressAlreadyInUseOnChildContract");
-  }
-  
-  try {
-    const childContract = getChildContract(contractAddress, rpcUrl);
-    const addresses = await childContract.resolveAllAddresses(unifiedId);
-    return addresses.secondaries.includes(ethers.utils.getAddress(addressToCheck));
-  } catch (error) {
-    throw new Error(`Failed to check address usage on child contract: ${error.message}`);
-  }
-};
 
 /**
  * Resolve any address to unified ID and get role information
@@ -287,7 +204,6 @@ const getSecondaryWalletsforUnifiedID = async (unifiedId, contractAddress, rpcUr
   try {
     const childContract = getChildContract(contractAddress, rpcUrl);
     const secondaryAddresses = await childContract.getSecondaryAddresses(unifiedId);
-    
     return secondaryAddresses;
   } catch (error) {
     throw new Error(`Failed to get secondary wallets for unified ID: ${error.message}`);
@@ -419,72 +335,6 @@ const isValidUnifiedID = async (unifiedId, contractAddress, rpcUrl) => {
   }
 };
 
-/**
- * Validate if chain data exists for unified ID
- * @param {string} unifiedId - Unified ID
- * @param {number} chainId - Chain ID
- * @param {string} contractAddress - Mother contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<Object>} Chain data with primary, secondaries, and isValid flag
- */
-const validateChainDataExists = async (unifiedId, chainId, contractAddress, rpcUrl) => {
-  try {
-    const motherContract = getMotherContract(contractAddress, rpcUrl);
-    const chainData = await motherContract.getChainData(unifiedId, chainId);
-    return {
-      primary: chainData.primary,
-      secondaries: chainData.secondaries,
-      isValid: chainData.primary !== "0x0000000000000000000000000000000000000000"
-    };
-  } catch (error) {
-    throw new Error(`Failed to validate chain data: ${error.message}`);
-  }
-};
-
-/**
- * Check if secondary address is already added on mother contract
- * @param {string} unifiedId - Unified ID
- * @param {number} chainId - Chain ID
- * @param {string} addressToCheck - Address to check
- * @param {string} contractAddress - Mother contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<boolean>} True if secondary is already added
- */
-const isSecondaryAlreadyAddedOnMother = async (unifiedId, chainId, addressToCheck, contractAddress, rpcUrl) => {
-  if (!addressToCheck) {
-    throw new Error("addressToCheck is required in isSecondaryAlreadyAddedOnMother");
-  }
-  
-  try {
-    const motherContract = getMotherContract(contractAddress, rpcUrl);
-    const chainData = await motherContract.getChainData(unifiedId, chainId);
-    return chainData.secondaries.includes(ethers.utils.getAddress(addressToCheck));
-  } catch (error) {
-    throw new Error(`Failed to check secondary address on mother contract: ${error.message}`);
-  }
-};
-
-/**
- * Check if primary address is already in use on mother contract
- * @param {number} chainId - Chain ID
- * @param {string} addressToCheck - Address to check
- * @param {string} contractAddress - Mother contract address
- * @param {string} rpcUrl - RPC URL
- * @returns {Promise<boolean>} True if primary is already in use
- */
-const isPrimaryAlreadyInUseOnMotherContract = async (chainId, addressToCheck, contractAddress, rpcUrl) => {
-  if (!addressToCheck) {
-    throw new Error("addressToCheck is required in isPrimaryAlreadyInUseOnMotherContract");
-  }
-  
-  try {
-    const motherContract = getMotherContract(contractAddress, rpcUrl);
-    const idFetched = await motherContract.resolveAddressToUnifiedId(addressToCheck, chainId);
-    return idFetched !== "";
-  } catch (error) {
-    throw new Error(`Failed to check primary address on mother contract: ${error.message}`);
-  }
-};
 
 /**
  * Get child contract address for given environment and chain ID
@@ -518,30 +368,23 @@ const getStorageUtilContractAddress = (config) => {
 };
 
 module.exports = {
-  unifiedIdExistsOnMotherContract,
-  unifiedIdExistsOnChildContract,
-  isAddressAlreadyPresentOnChildContract,
-  isAddressAlreadyInUseOnChildContract,
-  resolveAnyAddressToUnifiedId,
-  resolveSecondaryAddressToUnifiedId,
-  getUnifiedIDByPrimaryAddress,
-  getRegistrationFees,
-  validateSignature,
-  isPrimaryAddressAlreadyRegistered,
-  isSecondaryAddressAlreadyRegistered,
-  isUnifiedIDAlreadyRegistered,
-  getMasterWalletforUnifiedID,
-  getPrimaryWalletforUnifiedID,
-  getSecondaryWalletsforUnifiedID,
-  isValidUnifiedID,
-  validateChainDataExists,
-  isSecondaryAlreadyAddedOnMother,
-  isPrimaryAlreadyInUseOnMotherContract,
-  getChildContractAddress,
-  getMotherContractAddress,
-  getStorageUtilContractAddress,
-  getProvider,
-  getMotherContract,
-  getChildContract,
-  getStorageUtilContract
+  resolveAnyAddressToUnifiedId: resolveAnyAddressToUnifiedId,
+  resolveSecondaryAddressToUnifiedId: resolveSecondaryAddressToUnifiedId,
+  getUnifiedIDByPrimaryAddress: getUnifiedIDByPrimaryAddress,
+  getRegistrationFees: getRegistrationFees,
+  validateSignature: validateSignature,
+  isPrimaryAddressAlreadyRegistered : isPrimaryAddressAlreadyRegistered,
+  isSecondaryAddressAlreadyRegistered: isSecondaryAddressAlreadyRegistered,
+  isUnifiedIDAlreadyRegistered: isUnifiedIDAlreadyRegistered,
+  getMasterWalletforUnifiedID: getMasterWalletforUnifiedID,
+  getPrimaryWalletforUnifiedID : getPrimaryWalletforUnifiedID,
+  getSecondaryWalletsforUnifiedID: getSecondaryWalletsforUnifiedID,
+  isValidUnifiedID: isValidUnifiedID,
+  getChildContractAddress: getChildContractAddress,
+  getMotherContractAddress: getMotherContractAddress,
+  getStorageUtilContractAddress: getStorageUtilContractAddress,
+  getProvider: getProvider,
+  getMotherContract: getMotherContract,
+  getChildContract: getChildContract,
+  getStorageUtilContract: getStorageUtilContract
 }; 
